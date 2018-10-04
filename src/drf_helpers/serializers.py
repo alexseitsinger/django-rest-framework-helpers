@@ -1,18 +1,22 @@
+import base64
 import six
+import uuid
 import pytz
-
-from rest_framework import serializers
+import imghdr
+from django.core.files.base import ContentFile
+from django.shortcuts import get_object_or_404
 from rest_framework.serializers import (
+    Field,
     HyperlinkedRelatedField,
     HyperlinkedIdentityField,
+    HyperlinkedModelSerializer,
+    ImageField,
+    ValidationError,
 )
-from rest_framework.reverse import reverse
+from .mixins import ParameterisedFieldMixin
 
-from .mixins import (
-    ParameterisedFieldMixin,
-)
 
-class TimezoneField(serializers.Field):
+class TimezoneField(Field):
     """
     Serializer field for pytz timezone handling (used with django-timezone-field)
 
@@ -29,8 +33,11 @@ class TimezoneField(serializers.Field):
         except pytz.exceptions.UnknownTimeZoneError:
             raise ValidationError('Unknown timezone')
 
+
 class ParameterisedHyperlinkedRelatedField(
-        ParameterisedFieldMixin, HyperlinkedRelatedField):
+    ParameterisedFieldMixin,
+    HyperlinkedRelatedField
+):
 
     lookup_fields = [
         #   <model_field>/<url_kwarg>
@@ -40,8 +47,7 @@ class ParameterisedHyperlinkedRelatedField(
 
     def __init__(self, *args, **kwargs):
         self.lookup_fields = kwargs.pop("lookup_fields", self.lookup_fields)
-        super(ParameterisedHyperlinkedRelatedField, self).__init__(
-            *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class ParameterisedHyperlinkedIdentityField(HyperlinkedIdentityField):
@@ -52,8 +58,7 @@ class ParameterisedHyperlinkedIdentityField(HyperlinkedIdentityField):
     def __init__(self, *args, **kwargs):
         self.lookup_fields = kwargs.pop("lookup_fields", self.lookup_fields)
         # self.read_only = kwargs.pop("read_only", self.read_only)
-        super(ParameterisedHyperlinkedIdentityField, self).__init__(
-            *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_object(self, view_name, view_args, view_kwargs):
         """ Given a URL, return a corresponding object. """
@@ -84,14 +89,7 @@ class ParameterisedHyperlinkedIdentityField(HyperlinkedIdentityField):
             view_name, kwargs=kwargs, request=request, format=format)
 
 
-# class ParameterisedHyperlinkedModelSerializer(
-#     serializers.HyperlinkedModelSerializer):
-
-#     serializer_related_field = fields.ParameterisedHyperlinkedRelatedField
-#     serializer_url_field = fields.ParameterisedHyperlinkedIdentityField
-
-
-class DynamicFieldsModelSerializer(serializers.HyperlinkedModelSerializer):
+class DynamicFieldsModelSerializer(HyperlinkedModelSerializer):
     """
     A HyperlinkedModelSerializer that takes an additional `fields` argument that
     controls which fields should be displayed.
@@ -102,7 +100,7 @@ class DynamicFieldsModelSerializer(serializers.HyperlinkedModelSerializer):
         fields = kwargs.pop('fields', None)
         exclude = kwargs.pop('exclude', None)
         # Instantiate the superclass normally
-        super(DynamicFieldsModelSerializer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if fields:
             # Drop any fields that are not specified in the `fields` argument.
@@ -119,9 +117,8 @@ class DynamicFieldsModelSerializer(serializers.HyperlinkedModelSerializer):
                 except KeyError:
                     pass
 
-from rest_framework import serializers
 
-class Base64ImageField(serializers.ImageField):
+class Base64ImageField(ImageField):
     """
     A Django REST framework field for handling image-uploads through raw post data.
     It uses base64 for encoding and decoding the contents of the file.
@@ -135,39 +132,26 @@ class Base64ImageField(serializers.ImageField):
     """
 
     def to_internal_value(self, data):
-        from django.core.files.base import ContentFile
-        import base64
-        import six
-        import uuid
-
         # Check if this is a base64 string
         if isinstance(data, six.string_types):
             # Check if the base64 string is in the "data:" format
             if 'data:' in data and ';base64,' in data:
                 # Break out the header from the base64 content
                 header, data = data.split(';base64,')
-
             # Try to decode the file. Return validation error if it fails.
             try:
                 decoded_file = base64.b64decode(data)
             except TypeError:
                 self.fail('invalid_image')
-
             # Generate file name:
             file_name = str(uuid.uuid4())[:12] # 12 characters are more than enough.
             # Get the file name extension:
             file_extension = self.get_file_extension(file_name, decoded_file)
-
             complete_file_name = "%s.%s" % (file_name, file_extension, )
-
             data = ContentFile(decoded_file, name=complete_file_name)
-
-        return super(Base64ImageField, self).to_internal_value(data)
+        return super().to_internal_value(data)
 
     def get_file_extension(self, file_name, decoded_file):
-        import imghdr
-
         extension = imghdr.what(file_name, decoded_file)
         extension = "jpg" if extension == "jpeg" else extension
-
         return extension
