@@ -11,7 +11,7 @@ def detail_route_url(viewset, lookup_field, ignored=[]):
     return url(
         regex=r"^{}/(?!({})$)(?P<{}>[^/.]+)/?$".format(
             name_plural_spaceless,
-            "|".format([name for name in ignored]),
+            "|".join([name for name in ignored]),
             lookup_field,
         ),
         view=viewset.as_view(actions=detail_route),
