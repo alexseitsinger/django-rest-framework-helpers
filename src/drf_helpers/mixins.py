@@ -8,15 +8,11 @@
 
     https://stackoverflow.com/questions/43964007/django-rest-framework-get-or-create-for-primarykeyrelatedfield
 """
-import re
-import collections
 from django.core.exceptions import (
     ObjectDoesNotExist,
     MultipleObjectsReturned,
 )
 from django.shortcuts import get_object_or_404
-from rest_framework.reverse import reverse
-from rest_framework.permissions import AllowAny
 from rest_framework.serializers import ValidationError
 
 
@@ -50,7 +46,7 @@ class OrderByFieldNameMixin(object):
     order_by_field_name = None
 
     def get_queryset(self):
-        queryset = super(OrderByFieldNameMixin, self).get_queryset()
+        queryset = super().get_queryset()
         if self.order_by_field_name is not None:
             queryset = queryset.order_by(self.order_by_field_name)
         return queryset
@@ -59,7 +55,7 @@ class ExcludeKwargsMixin(object):
     exclude_kwargs = {}
 
     def get_queryset(self):
-        queryset = super(ExcludeKwargsMixin, self).get_queryset()
+        queryset = super().get_queryset()
         queryset = queryset.exclude(**self.exclude_kwargs)
         return queryset
 
@@ -70,7 +66,7 @@ class IsObjectUserQuerysetMixin(object):
     NOTE: Requires that the permission classes include an object permission check. ie: IsObjectUser
     """
     def get_queryset(self):
-        queryset = super(IsObjectUserQuerysetMixin, self).get_queryset()
+        queryset = super().get_queryset()
         for obj in queryset:
             self.check_object_permissions(self.request, obj)
         return queryset
@@ -96,7 +92,7 @@ class QuerysetObjectPermissionsMixin(object):
         A mixin class to force checking object permissions for each object in queryset.
     """
     def get_queryset(self):
-        queryset = super(QuerysetObjectPermissionsMixin, self).get_queryset()
+        queryset = super().get_queryset()
         for obj in queryset:
             self.check_object_permissions(self.request, obj)
         return queryset
@@ -170,7 +166,7 @@ class ParameterisedViewMixin(object):
 
     def __init__(self, *args, **kwargs):
         self.lookup_fields = kwargs.pop("lookup_fields", self.lookup_fields)
-        super(ParameterisedViewMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_object_kwargs(self):
         object_kwargs = {}
@@ -204,7 +200,7 @@ class ParameterisedFieldMixin(object):
 
     def __init__(self, *args, **kwargs):
         self.lookup_fields = kwargs.pop("lookup_fields", self.lookup_fields)
-        super(ParameterisedFieldMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def use_pk_only_optimization(self):
         """ Return true if all lookup fields for the models is its PK """
@@ -274,7 +270,7 @@ class MeAliasMixin(object):
                         ))
                     elif "me" == v:
                         request.data[k] = v.replace("me", getattr(request.user, self.me_alias_lookup_field))
-        return super(MeAliasMixin, self).initial(request, *args, **kwargs)
+        return super().initial(request, *args, **kwargs)
 
     def dispatch(self, request, *args, **kwargs):
         # Duplicate and replace the query params
@@ -299,5 +295,4 @@ class MeAliasMixin(object):
                         else:
                             new_kwargs[k] = request.user
 
-        return super(MeAliasMixin, self).dispatch(
-            request, *args, **new_kwargs)
+        return super().dispatch(request, *args, **new_kwargs)
