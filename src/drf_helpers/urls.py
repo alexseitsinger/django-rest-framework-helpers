@@ -9,7 +9,7 @@ def detail_route_url(viewset, lookup_field, ignored=[]):
     name_plural = model._meta.verbose_name_plural.lower()
     name_plural_spaceless = re.sub(r"\s+", "", name_plural)
     return url(
-        regex=r"^{}/(?!({})$)(?P<{}>[^/.]+)/?$".format(
+        regex=r"^{}/(?!({})/?$)(?P<{}>[^/.]+)/?$".format(
             name_plural_spaceless,
             "|".join([name for name in ignored]),
             lookup_field,
