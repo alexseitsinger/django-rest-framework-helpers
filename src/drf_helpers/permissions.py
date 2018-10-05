@@ -42,6 +42,16 @@ class IsObjectUser(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return bool(obj.user == request.user)
 
+class NestedUserFieldPermission(permissions.BasePermission):
+    nested_user_field = None
+
+    def has_object_permission(self, request, view, obj):
+        attr = obj
+        for name in self.nested_user_field.split("."):
+            attr = getattr(attr, name)
+        if request.user == attr:
+            return True
+        return False
 
 class IsObjectUserAttribute(permissions.BasePermission):
     """ Permission that only allows the obj's user to access it. """

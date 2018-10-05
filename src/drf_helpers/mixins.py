@@ -71,6 +71,34 @@ class IsObjectUserQuerysetMixin(object):
             self.check_object_permissions(self.request, obj)
         return queryset
 
+class NestedUserFieldsValidatorsMixin(object):
+    """
+    Creates a validator for a fields dynamically. Validates the nested fields value against the current user.
+    """
+    nested_user_fields = {}
+
+    def set_nested_user_fields_validators(self):
+        # create the path to get from the value
+        # path = self.nested_user_field
+        for field_name, path in self.nested_user_fields.items():
+            validator_name = "validate_{}".format(field_name)
+            bits = path.split(".")
+
+            # create a method for the validator
+            def validator(value):
+                attr = value
+                for name in bits:
+                    attr = getattr(attr, name)
+                if self.context["request"].user != attr:
+                    raise ValidationError("User must match the current session")
+                return value
+
+            # dynamically set the validator method
+            setattr(self, validator_name, validator)
+
+    def __init__(self, *args, **kwargs):
+        self.set_nested_user_fields_validators()
+        super().__init__(*args, **kwargs)
 
 class ValidateUserMixin(object):
     def validate_user(self, value):
