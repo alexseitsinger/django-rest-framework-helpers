@@ -106,6 +106,21 @@ class ValidateUserMixin(object):
             raise ValidationError("User must match the current session")
         return value
 
+class ValidateFieldForCurrentUserMixin(object):
+    validate_field_for_current_user = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_validator_for_field()
+
+    def add_validator_for_field(self):
+        def validator(value):
+            if self.context["request"].user != value:
+                raise ValidationError("User must match the current sesssion")
+            return value
+        validator_name = "validate_{}".format(self.validate_field_for_current_user)
+        setattr(self, validator_name, validator)
+
 
 class SerializerClassByActionMixin(object):
     """ Return the serializer class based on the action verb. """
