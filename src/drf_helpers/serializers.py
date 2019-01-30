@@ -16,6 +16,29 @@ from rest_framework.serializers import (
 from .mixins import ParameterisedFieldMixin
 
 
+class LoadableImageField(ImageField):
+    """
+    An ImageField that can be passed an existing imagefield url, and therefore can be used in updates without requiring a file upload.
+    """
+    def get_field_for_url(self, data):
+        model = self.parent.Meta.model
+        queryset = model.objects.all()
+        for instance in queryset:
+            field = getattr(instance, self.field_name, None)
+            if field is not None:
+                url = getattr(field, "url", None)
+                if url is not None:
+                    if url in data:
+                        return field
+
+    def to_internal_value(self, data):
+        try:
+            return super().to_internal_value(data)
+        except ValidationError:
+            field = self.get_field_for_url(data)
+            return super().to_internal_value(field)
+
+
 class TimezoneField(Field):
     """
     Serializer field for pytz timezone handling (used with django-timezone-field)
