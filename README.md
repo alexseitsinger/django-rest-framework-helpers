@@ -1,17 +1,11 @@
-# DRF Helpers
+# Django Rest Framework Helpers
 
 ## Description
 
-A collection of modules that contain useful helpers for use with the Django REST Framework.
+A collection of useful modules for Django Rest Framwork.
 
 ## Installation
 
 ```python
-pip install drf-helpers
-```
-
-or
-
-```python
-pipenv install drf-helpers
+pip install django-rest-framework-helpers
 ```
