@@ -2,7 +2,7 @@
 
 ## Description
 
-A collection of useful modules for Django Rest Framwork.
+A collection of useful modules for Django Rest Framework.
 
 ## Installation
 
