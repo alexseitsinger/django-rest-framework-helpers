@@ -1,7 +1,34 @@
-<a name="v0.2.0"></a>
-## [v0.2.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/643e753648ea12bc062d4288cfb6ab7f404b62d8...v0.2.0) (2019-06-29)
+<a name="v0.2.1"></a>
+## [v0.2.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.1.1...v0.2.1) (2019-06-29)
+
+### Bug Fixes
+- Fixes regex typo. ([74fbee1](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/74fbee1766e931e6850283556223951f1e64e0b9))
+- Fixes typo in ignored string. ([a9d5f0e](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/a9d5f0eeef407f71e80f25ed85abf7caff98d7e6))
 
 ### Code Refactoring
-- Renames package. ([cc1606e](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/cc1606ef72845f15e2f4ab2a69a76cc7933a8fcd))
+- Renames package. ([db1cc2d](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/db1cc2dd70fdc812b534ad63b3b7739aa628d81e))
+- Updates serializers and mixins modules. ([8b43016](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8b430167274dcce95b9e6ef242acacde4393e4ac))
+
+### Features
+- Adds LoadableImageField. ([7e82bc1](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/7e82bc1d15a4b13063354c1662b9098a97c6a40d))
+- Adds new mixin. ([3635d98](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/3635d9824fc7617ef1d86776749a6c91184df6fd))
+- Adds routes and views modules. ([eef72a8](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/eef72a80c2b6d6975997e58623f5034745ba2ae8))
+
+
+<a name="v0.1.1"></a>
+## [v0.1.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.1.0...v0.1.1) (2019-06-29)
+
+### Code Refactoring
+- Updates urls module. ([d305c52](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/d305c52408a29947a4db1612c3df3e61caa83542))
+
+### Features
+- Adds urls module. ([691afce](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/691afce38f86edc3dbfbfbcce73848c78a52c628))
+
+
+<a name="v0.1.0"></a>
+## [v0.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/8ccc9195f8dfdf803193d60e87bcf1e5294dcad2...v0.1.0) (2019-06-29)
+
+### Features
+- Initial commit, master. ([8ccc919](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8ccc9195f8dfdf803193d60e87bcf1e5294dcad2))
 
 
