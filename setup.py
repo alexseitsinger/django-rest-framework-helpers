@@ -18,7 +18,7 @@ setup(
     author="Alex Seitsinger",
     author_email="software@alexseitsinger.com",
     url=HOMEPAGE_URL,
-    install_required=["Django>=2.0", "djangorestframework"],
+    install_requires=["Django>=2.0", "djangorestframework"],
     package_dir={"": "src"},
     packages=find_packages("src", exclude=["tests"]),
     include_package_data=True,
