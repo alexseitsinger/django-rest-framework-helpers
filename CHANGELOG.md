@@ -1,3 +1,7 @@
+<a name="v0.2.2"></a>
+## [v0.2.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.2.1...v0.2.2) (2019-06-29)
+
+
 <a name="v0.2.1"></a>
 ## [v0.2.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.1.1...v0.2.1) (2019-06-29)
 
