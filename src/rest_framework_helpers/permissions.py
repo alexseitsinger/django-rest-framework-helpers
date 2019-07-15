@@ -157,6 +157,7 @@ class HasQueryParams(BasePermission):
     """
     Returns True if specific query params are present in the request.
     """
+
     target_params = None
 
     def has_params(self, request):
@@ -197,13 +198,14 @@ class HasAllowedReferer(BasePermission):
     """
     Returns True if the request's referer matches one of the accepted referers.
     """
+
     referers_allowed = None
 
     def get_referers_allowed(self):
         allowed = self.referers_allowed
         return allowed
 
-    def has_allowed_referer(self, request)
+    def has_allowed_referer(self, request):
         current = request.META.get("HTTP_REFERER", None)
         allowed = self.get_referers_allowed()
         if any([x is None for x in [current, allowed]]):
@@ -220,6 +222,7 @@ class HasAllowedUserAgent(BasePermission):
     """
     Returns True if the request's user agent matches one of the allowed user agents.
     """
+
     user_agents_allowed = None
 
     def get_user_agents_allowed(self):
@@ -243,6 +246,7 @@ class DoesNotHaveBlockedIPAddress(BasePermission):
     """
     Returns False if the IP address of the current request is specified as blocked.
     """
+
     ip_addresses_blocked = None
     fallback_result = False
 
@@ -269,6 +273,7 @@ class HasAllowedIPAddress(BasePermission):
     """
     Return True only if the IP address of the current request is in the list.
     """
+
     ip_addresses_allowed = None
 
     def get_ip_addressed_allowed(self):
@@ -286,5 +291,3 @@ class HasAllowedIPAddress(BasePermission):
 
     def has_permission(self, request, view):
         return self.has_allowed_ip_address(request)
-
-
