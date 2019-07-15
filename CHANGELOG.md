@@ -1,3 +1,13 @@
+<a name="v1.0.0"></a>
+## [v1.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.2.2...v1.0.0) (2019-07-15)
+
+### Code Refactoring
+- Deletes empty module. ([52e41e9](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/52e41e974d5c005245356c14badb7e00b6a37f27))
+
+### Features
+- Adds/updates permission classes. ([523d2ac](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/523d2ac92e3ea03935eb69be6fe022c3aea7d96a))
+
+
 <a name="v0.2.2"></a>
 ## [v0.2.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.2.1...v0.2.2) (2019-06-29)
 
