@@ -1,6 +1,32 @@
+import os
 import re
+from django.conf import settings
 from django.conf.urls import url
+from django.utils.module_loading import import_string
 from .action_maps import detail_route, list_route
+
+
+def load_urls(
+    current_file, urls=[], ignored=[], target_file="urls.py", target_attr="urlpatterns"
+):
+    cur_dir = os.path.dirname(os.path.abspath(current_file))
+    for dir_name in os.listdir(cur_dir):
+        dir_path = os.path.join(cur_dir, dir_name)
+        if os.path.isdir(dir_path):
+            if dir_name in ignored:
+                continue
+            urls_module = os.path.join(dir_path, target_file)
+            if os.path.isfile(urls_module):
+                rel_path = os.path.relpath(urls_module, settings.SITE_ROOT)
+                rel_path = rel_path.replace(".py", "")
+                module_path = rel_path.replace("/", ".")
+                module_path = "{}.{}".format(module_path, target_attr)
+                try:
+                    urls += import_string(module_path)
+                except ImportError:
+                    print("Failed to import: {}".format(module_path))
+                    pass
+    return urls
 
 
 def detail_route_url(viewset, lookup_field, ignored=[]):
@@ -10,12 +36,10 @@ def detail_route_url(viewset, lookup_field, ignored=[]):
     name_plural_spaceless = re.sub(r"\s+", "", name_plural)
     return url(
         regex=r"^{}/(?!({})/?$)(?P<{}>[^/.]+)/?$".format(
-            name_plural_spaceless,
-            "|".join([name for name in ignored]),
-            lookup_field,
+            name_plural_spaceless, "|".join([name for name in ignored]), lookup_field
         ),
         view=viewset.as_view(actions=detail_route),
-        name="{}-detail".format(name)
+        name="{}-detail".format(name),
     )
 
 
@@ -27,12 +51,9 @@ def list_route_url(viewset):
     return url(
         regex=r"^{}/?$".format(name_plural_spaceless),
         view=viewset.as_view(actions=list_route),
-        name="{}-list".format(name)
+        name="{}-list".format(name),
     )
 
 
 def make_urlpatterns(viewset, lookup_field, ignored=[]):
-    return [
-        list_route_url(viewset),
-        detail_route_url(viewset, lookup_field, ignored),
-    ]
+    return [list_route_url(viewset), detail_route_url(viewset, lookup_field, ignored)]
