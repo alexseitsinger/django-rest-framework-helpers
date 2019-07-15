@@ -1,3 +1,4 @@
+import os
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
@@ -199,18 +200,29 @@ class HasAllowedReferer(BasePermission):
     Returns True if the request's referer matches one of the accepted referers.
     """
 
-    referers_allowed = None
+    allowed_prefixes = None
+    allowed_suffixes = None
 
-    def get_referers_allowed(self):
-        allowed = self.referers_allowed
-        return allowed
+    def get_allowed_referers(self):
+        prefixes = self.allowed_prefixes
+        suffixes = self.allowed_suffixes
+        if any([x is None for x in [prefixes, suffixes]]):
+            return None
+        result = []
+        for prefix in prefixes:
+            for suffix in suffixes:
+                url = os.path.normpath("{}/{}".format(prefix, suffix))
+                result.append(url)
+                if not url.endswith("/"):
+                    result.append("{}/".format(url))
+        return result
 
     def has_allowed_referer(self, request):
-        current = request.META.get("HTTP_REFERER", None)
-        allowed = self.get_referers_allowed()
-        if any([x is None for x in [current, allowed]]):
+        referer = request.META.get("HTTP_REFERER", None)
+        allowed = self.get_allowed_referers()
+        if any([x is None for x in [referer, allowed]]):
             return False
-        if current in allowed:
+        if referer in allowed:
             return True
         return False
 
