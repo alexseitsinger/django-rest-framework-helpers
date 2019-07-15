@@ -1,4 +1,5 @@
 import os
+import re
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
@@ -209,12 +210,18 @@ class HasAllowedReferer(BasePermission):
         if any([x is None for x in [prefixes, suffixes]]):
             return None
         result = []
+        regex = r"(https?://)(.*)"
         for prefix in prefixes:
-            for suffix in suffixes:
-                url = os.path.normpath("{}/{}".format(prefix, suffix))
-                result.append(url)
-                if not url.endswith("/"):
-                    result.append("{}/".format(url))
+            try:
+                protocol, base = re.match(regex, prefix).groups()
+                for suffix in suffixes:
+                    normalized = os.path.normpath("{}/{}".format(base, suffix))
+                    full = "{}{}".format(protocol, normalized)
+                    result.append(full)
+                    if not full.endswith("/"):
+                        result.append("{}/".format(full))
+            except AttributeError:
+                pass
         return result
 
     def has_allowed_referer(self, request):
