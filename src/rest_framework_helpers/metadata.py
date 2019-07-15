@@ -15,6 +15,7 @@ class NoMetaData(BaseMetadata):
     }
 
     https://dbader.org/blog/django-rest-framework-options-response
-    """    
+    """
+
     def determine_metadata(self, request, view):
         return None

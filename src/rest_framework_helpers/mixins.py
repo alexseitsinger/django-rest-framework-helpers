@@ -1,17 +1,11 @@
 """
-    https://stackoverflow.com/questions/29362142/django-rest-framework-hyperlinkedidentityfield-with-multiple-lookup-args
-
-    http://www.tomchristie.com/rest-framework-2-docs/api-guide/relations
-    https://github.com/miki725/formslayer/blob/master/formslayer/pdf/relations.py#L7-L46
-
-    https://stackoverflow.com/questions/32038643/custom-hyperlinked-url-field-for-more-than-one-lookup-field-in-a-serializer-of-d
-
-    https://stackoverflow.com/questions/43964007/django-rest-framework-get-or-create-for-primarykeyrelatedfield
+https://stackoverflow.com/questions/29362142/django-rest-framework-hyperlinkedidentityfield-with-multiple-lookup-args
+http://www.tomchristie.com/rest-framework-2-docs/api-guide/relations
+https://github.com/miki725/formslayer/blob/master/formslayer/pdf/relations.py#L7-L46
+https://stackoverflow.com/questions/32038643/custom-hyperlinked-url-field-for-more-than-one-lookup-field-in-a-serializer-of-d
+https://stackoverflow.com/questions/43964007/django-rest-framework-get-or-create-for-primarykeyrelatedfield
 """
-from django.core.exceptions import (
-    ObjectDoesNotExist,
-    MultipleObjectsReturned,
-)
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.shortcuts import get_object_or_404
 from rest_framework.serializers import ValidationError
 
@@ -51,6 +45,7 @@ class OrderByFieldNameMixin(object):
             queryset = queryset.order_by(self.order_by_field_name)
         return queryset
 
+
 class ExcludeKwargsMixin(object):
     exclude_kwargs = {}
 
@@ -65,16 +60,19 @@ class IsObjectUserQuerysetMixin(object):
     Check object permissions for each object in queryset.
     NOTE: Requires that the permission classes include an object permission check. ie: IsObjectUser
     """
+
     def get_queryset(self):
         queryset = super().get_queryset()
         for obj in queryset:
             self.check_object_permissions(self.request, obj)
         return queryset
 
+
 class NestedUserFieldsValidatorsMixin(object):
     """
     Creates a validator for a fields dynamically. Validates the nested fields value against the current user.
     """
+
     nested_user_fields = {}
 
     def set_nested_user_fields_validators(self):
@@ -100,11 +98,13 @@ class NestedUserFieldsValidatorsMixin(object):
         self.set_nested_user_fields_validators()
         super().__init__(*args, **kwargs)
 
+
 class ValidateUserMixin(object):
     def validate_user(self, value):
         if self.context["request"].user != value:
             raise ValidationError("User must match the current session")
         return value
+
 
 class ValidateFieldForCurrentUserMixin(object):
     validate_field_for_current_user = None
@@ -118,22 +118,26 @@ class ValidateFieldForCurrentUserMixin(object):
             if self.context["request"].user != value:
                 raise ValidationError("User must match the current sesssion")
             return value
+
         validator_name = "validate_{}".format(self.validate_field_for_current_user)
         setattr(self, validator_name, validator)
 
 
 class SerializerClassByActionMixin(object):
     """ Return the serializer class based on the action verb. """
+
     def get_serializer_class(self):
         try:
             return self.serializer_class_by_action[self.action]
         except KeyError:
             return self.serializer_class_by_action["default"]
 
+
 class QuerysetObjectPermissionsMixin(object):
     """
         A mixin class to force checking object permissions for each object in queryset.
     """
+
     def get_queryset(self):
         queryset = super().get_queryset()
         for obj in queryset:
@@ -145,13 +149,20 @@ class PermissionClassesByActionMixin(object):
     """
     https://stackoverflow.com/questions/36001485/django-rest-framework-different-permission-per-methods-within-same-view
     """
+
     def get_permissions(self):
         try:
             # return permission_classes depending on `action`
-            return [permission() for permission in self.permission_classes_by_action[self.action]]
+            return [
+                permission()
+                for permission in self.permission_classes_by_action[self.action]
+            ]
         except KeyError:
             # action is not set return default permission_classes
-            return [permission() for permission in self.permission_classes_by_action["default"]]
+            return [
+                permission()
+                for permission in self.permission_classes_by_action["default"]
+            ]
 
 
 class AlphabeticalOrderQuerysetMixin(object):
@@ -167,18 +178,18 @@ class AlphabeticalOrderQuerysetMixin(object):
         return queryset
 
 
-
 class MultipleFieldLookupMixin(object):
     """
     Apply this mixin to any view or viewset to get multiple field filtering
     based on a `lookup_fields` attribute, instead of the default single field filtering.
     """
+
     def get_object(self):
-        queryset = self.get_queryset()             # Get the base queryset
+        queryset = self.get_queryset()  # Get the base queryset
         queryset = self.filter_queryset(queryset)  # Apply any filter backends
         filter = {}
         for field in self.lookup_fields:
-            if self.kwargs[field]: # Ignore empty fields.
+            if self.kwargs[field]:  # Ignore empty fields.
                 filter[field] = self.kwargs[field]
         return get_object_or_404(queryset, **filter)  # Lookup the object
 
@@ -196,7 +207,7 @@ class HyperlinkListMixin(object):
             return self.get_paginated_response(result)
 
         serializer = self.get_serializer(queryset, many=True)
-        result = [obj['url'] for obj in serializer.data]
+        result = [obj["url"] for obj in serializer.data]
         return Response(result)
 
 
@@ -249,7 +260,7 @@ class ParameterisedFieldMixin(object):
         """ Return true if all lookup fields for the models is its PK """
         result = False
         for field_tuple in self.lookup_fields:
-            if field_tuple[0] and field_tuple[1] == 'pk':
+            if field_tuple[0] and field_tuple[1] == "pk":
                 result = True
         return result
 
@@ -272,7 +283,7 @@ class ParameterisedFieldMixin(object):
         url_kwargs = {}
         for model_field, url_param in self.lookup_fields:
             attr = obj
-            for field in model_field.split('.'):
+            for field in model_field.split("."):
                 attr = getattr(attr, field)
             url_kwargs[url_param] = attr
         return url_kwargs
@@ -285,10 +296,12 @@ class ParameterisedFieldMixin(object):
         attributes are not configured to correctly match the URL conf.
         """
         # # Unsaved objects will not yet have a valid URL.
-        if hasattr(obj, 'pk') and obj.pk in (None, ''):
+        if hasattr(obj, "pk") and obj.pk in (None, ""):
             return None
         url_kwargs = self.get_url_kwargs(obj)
-        return self.reverse(view_name, kwargs=url_kwargs, request=request, format=format)
+        return self.reverse(
+            view_name, kwargs=url_kwargs, request=request, format=format
+        )
 
 
 class MeAliasMixin(object):
@@ -308,11 +321,16 @@ class MeAliasMixin(object):
             for k, v in request.data.items():
                 if isinstance(v, str):
                     if "/me/" in v:
-                        request.data[k] = v.replace("/me/", "/{}/".format(
-                            getattr(request.user, self.me_alias_lookup_field),
-                        ))
+                        request.data[k] = v.replace(
+                            "/me/",
+                            "/{}/".format(
+                                getattr(request.user, self.me_alias_lookup_field)
+                            ),
+                        )
                     elif "me" == v:
-                        request.data[k] = v.replace("me", getattr(request.user, self.me_alias_lookup_field))
+                        request.data[k] = v.replace(
+                            "me", getattr(request.user, self.me_alias_lookup_field)
+                        )
         return super().initial(request, *args, **kwargs)
 
     def dispatch(self, request, *args, **kwargs):
@@ -320,13 +338,15 @@ class MeAliasMixin(object):
         new_kwargs = dict(**kwargs)
         new_query_params = request.GET.copy()
         if request.user.is_authenticated:
-            for k,v in new_query_params.items():
+            for k, v in new_query_params.items():
                 if v == "me":
-                    new_query_params[k] = getattr(request.user, self.me_alias_lookup_field)
+                    new_query_params[k] = getattr(
+                        request.user, self.me_alias_lookup_field
+                    )
             request.GET = new_query_params
 
             # Duplicate and replace the kwargs
-            for k,v in new_kwargs.items():
+            for k, v in new_kwargs.items():
                 if v == "me":
                     k_bits = k.split("__")
                     suffix = k_bits.pop()
