@@ -1,3 +1,10 @@
+<a name="v1.1.0"></a>
+## [v1.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.0.1...v1.1.0) (2019-07-15)
+
+### Features
+- Adds `load_urls` method. ([cc5b065](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/cc5b06596f5ff33d01692759b89b9f1c62e086e5))
+
+
 <a name="v1.0.1"></a>
 ## [v1.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.0.0...v1.0.1) (2019-07-15)
 
