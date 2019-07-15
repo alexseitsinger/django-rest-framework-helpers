@@ -1,3 +1,10 @@
+<a name="v1.1.1"></a>
+## [v1.1.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.0...v1.1.1) (2019-07-15)
+
+### Bug Fixes
+- Fixes allowed referers permission. ([612e7e7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/612e7e7960a0602b651646c5fc10f1cc771e28d6))
+
+
 <a name="v1.1.0"></a>
 ## [v1.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.0.1...v1.1.0) (2019-07-15)
 
