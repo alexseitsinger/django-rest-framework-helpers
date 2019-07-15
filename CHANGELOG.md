@@ -1,3 +1,10 @@
+<a name="v1.1.2"></a>
+## [v1.1.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.1...v1.1.2) (2019-07-15)
+
+### Bug Fixes
+- Fixes http url normalization. ([24e853e](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/24e853e54660a63f76459da29be47755e86f1ed7))
+
+
 <a name="v1.1.1"></a>
 ## [v1.1.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.0...v1.1.1) (2019-07-15)
 
