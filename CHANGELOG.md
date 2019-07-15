@@ -1,3 +1,10 @@
+<a name="v1.0.1"></a>
+## [v1.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.0.0...v1.0.1) (2019-07-15)
+
+### Bug Fixes
+- Fixes missing colon. ([260057d](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/260057d806ab5768483be66d54bdd1a174587374))
+
+
 <a name="v1.0.0"></a>
 ## [v1.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v0.2.2...v1.0.0) (2019-07-15)
 
