@@ -28,7 +28,8 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
     expand_serializer = None
 
     def __init__(self, *args, **kwargs):
-        self.expand_serializer = kwargs.pop("expand_serializer", None)
+        if self.expand_serializer is None:
+            self.expand_serializer = kwargs.pop("expand_serializer", None)
         super().__init__(*args, **kwargs)
 
     def to_representation(self, obj):
