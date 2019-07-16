@@ -1,3 +1,10 @@
+<a name="v2.0.1"></a>
+## [v2.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.0...v2.0.1) (2019-07-16)
+
+### Bug Fixes
+- Fixes overwriting expand_serializer at init. ([ab14722](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/ab147225ebd366124b31baa698f17a5251b1aef9))
+
+
 <a name="v2.0.0"></a>
 ## [v2.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.2...v2.0.0) (2019-07-16)
 
