@@ -1,3 +1,10 @@
+<a name="v2.0.0"></a>
+## [v2.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.2...v2.0.0) (2019-07-16)
+
+### Features
+- Adds fields module. ([0a56317](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/0a5631747c063d6df2f173ba186c731016789205))
+
+
 <a name="v1.1.2"></a>
 ## [v1.1.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v1.1.1...v1.1.2) (2019-07-15)
 
