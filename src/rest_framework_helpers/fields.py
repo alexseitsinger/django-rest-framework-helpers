@@ -5,6 +5,7 @@ import pytz
 import imghdr
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
+from django.utils.module_loading import import_string
 from rest_framework.serializers import (
     Field,
     HyperlinkedRelatedField,
@@ -36,13 +37,26 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
         ret = super().to_representation(obj)
         if self.expand_serializer is None:
             return ret
-        request = self.context["request"]
-        param = request.query_params.get("expand", "")
-        bits = param.split(",")
-        for bit in bits:
-            if self.field_name == bit:
-                sc = self.expand_serializer
+        context = getattr(self, "context", None)
+        if context is None:
+            return ret
+        request = context.get("request", None)
+        if request is None:
+            return ret
+        query_params = request.get("query_params", None)
+        if query_params is None:
+            return ret
+        query_param = query_params.get("expand", None)
+        if query_param is None:
+            return ret
+        field_names = query_param.split(",")
+        for field_name in field_names:
+            if self.field_name == field_name:
                 kw = {"context": self.context}
+                if isinstance(self.expand_serializer, str):
+                    sc = import_string(self.expand_serializer)
+                else:
+                    sc = self.expand_serializer
                 return sc(obj, **kw).data
         return ret
 
