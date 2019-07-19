@@ -43,7 +43,7 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
         request = context.get("request", None)
         if request is None:
             return ret
-        query_params = request.get("query_params", None)
+        query_params = getattr(request, "query_params", None)
         if query_params is None:
             return ret
         query_param = query_params.get("expand", None)
