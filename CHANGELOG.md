@@ -1,3 +1,10 @@
+<a name="v2.0.2"></a>
+## [v2.0.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.1...v2.0.2) (2019-07-19)
+
+### Bug Fixes
+- Makes expand serializer dynamic. ([20057e2](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/20057e237c4bf19fac76a5401e91e9d9c61b0f25))
+
+
 <a name="v2.0.1"></a>
 ## [v2.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.0...v2.0.1) (2019-07-16)
 
