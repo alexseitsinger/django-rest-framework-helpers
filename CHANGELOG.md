@@ -1,3 +1,10 @@
+<a name="v2.0.3"></a>
+## [v2.0.3](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.2...v2.0.3) (2019-07-19)
+
+### Bug Fixes
+- Fix getattr for request. ([672e719](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/672e719c63308a7b589bee2c50e8c32f9994e26d))
+
+
 <a name="v2.0.2"></a>
 ## [v2.0.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.1...v2.0.2) (2019-07-19)
 
