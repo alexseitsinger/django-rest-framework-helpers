@@ -1,3 +1,10 @@
+<a name="v3.0.0"></a>
+## [v3.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.1.0...v3.0.0) (2019-07-20)
+
+### Code Refactoring
+- Changes API for Expandable field spec. ([37f551a](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/37f551a4785340ad52562f50f5d32a834eb0ae25))
+
+
 <a name="v2.1.0"></a>
 ## [v2.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.4...v2.1.0) (2019-07-20)
 
