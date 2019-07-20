@@ -1,3 +1,13 @@
+<a name="v2.1.0"></a>
+## [v2.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.4...v2.1.0) (2019-07-20)
+
+### Code Refactoring
+- Removed silent errors for `load_urls`. ([930f70b](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/930f70b67b3894f618ccc8c245e3ef5318fdec19))
+
+### Features
+- Adds nested expansion for fields. ([257fa3d](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/257fa3d4d7413e130bf7a06a35bbbe057ac9f565))
+
+
 <a name="v2.0.4"></a>
 ## [v2.0.4](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.3...v2.0.4) (2019-07-20)
 
