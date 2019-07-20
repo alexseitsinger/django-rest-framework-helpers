@@ -21,11 +21,7 @@ def load_urls(
                 rel_path = rel_path.replace(".py", "")
                 module_path = rel_path.replace("/", ".")
                 module_path = "{}.{}".format(module_path, target_attr)
-                try:
-                    urls += import_string(module_path)
-                except ImportError:
-                    print("Failed to import: {}".format(module_path))
-                    pass
+                urls += import_string(module_path)
     return urls
 
 
