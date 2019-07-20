@@ -29,14 +29,21 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
     eg:
         GET http://www.example.com/api/v1/models/1?expand=field_name,field_name
 
-        expand_serializers = {
-            "assigned_to": UserHyperlinkedRelatedField,
-            "assigned_to.userprofile": UserProfileHyperlinkedRelatedField,
-        }
+        expand_serializers = (
+            {
+                "field_names": ("assigned_to", "assigned_by",),
+                "serializer_path": "src.path.to.SerializerClass",
+                "serializer_class": None,
+            },
+            {
+                "field_names": ("userprofile",),
+                "serializer_path": "src.path.to.SerializerClass",
+                "serializer_class": None,
+            },
+        )
     """
 
     expand_serializers = None
-    expand_serializer_classes = None
 
     def __init__(self, *args, **kwargs):
         if self.expand_serializers is None:
@@ -45,13 +52,21 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
 
     def get_expand_serializer_class(self, field_name):
         if self.expand_serializers is None:
+            self.expand_serializers = ()
+        target = None
+        for item in self.expand_serializers:
+            if field_name in item["field_names"]:
+                target = item
+        if target is None:
             return None
-        if self.expand_serializer_classes is None:
-            self.expand_serializer_classes = {}
-        path = self.expand_serializers.get(field_name, None)
-        if path is not None:
-            self.expand_serializer_classes[field_name] = import_string(path)
-        return self.expand_serializer_classes[field_name]
+        serializer_class = target.get("serializer_class", None)
+        if serializer_class is None:
+            serializer_path = target.get("serializer_path", None)
+            if serializer_path is None:
+                return None
+            serializer_class = import_string(serializer_path)
+            target.update({"serializer_class": serializer_class})
+        return serializer_class
 
     def expand(self, obj, context, field_name):
         SerializerClass = self.get_expand_serializer_class(field_name)
