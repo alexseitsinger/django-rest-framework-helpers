@@ -6,6 +6,7 @@ import imghdr
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.utils.module_loading import import_string
+from django.http.request import QueryDict
 from rest_framework.serializers import (
     Field,
     HyperlinkedRelatedField,
@@ -14,6 +15,8 @@ from rest_framework.serializers import (
     ImageField,
     ValidationError,
 )
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory
 
 from .mixins import ParameterisedFieldMixin
 from .utils import HashableDict
@@ -25,41 +28,74 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
 
     eg:
         GET http://www.example.com/api/v1/models/1?expand=field_name,field_name
+
+        expand_serializers = {
+            "assigned_to": UserHyperlinkedRelatedField,
+            "assigned_to.userprofile": UserProfileHyperlinkedRelatedField,
+        }
     """
 
-    expand_serializer = None
+    expand_serializers = None
+    expand_serializer_classes = None
 
     def __init__(self, *args, **kwargs):
-        self.read_only = True
-        if self.expand_serializer is None:
-            self.expand_serializer = kwargs.pop("expand_serializer", None)
+        if self.expand_serializers is None:
+            self.expand_serializers = kwargs.pop("expand_serializers", None)
         super().__init__(*args, **kwargs)
+
+    def get_expand_serializer_class(self, field_name):
+        if self.expand_serializers is None:
+            return None
+        if self.expand_serializer_classes is None:
+            self.expand_serializer_classes = {}
+        path = self.expand_serializers.get(field_name, None)
+        if path is not None:
+            self.expand_serializer_classes[field_name] = import_string(path)
+        return self.expand_serializer_classes[field_name]
+
+    def expand(self, obj, context, field_name):
+        SerializerClass = self.get_expand_serializer_class(field_name)
+        serializer = SerializerClass(obj, context=context)
+        data = serializer.data
+        return HashableDict(data)
 
     def to_expanded_representation(self, obj, field_names, context):
         for field_name in field_names:
-            if self.field_name == field_name:
-                if isinstance(self.expand_serializer, str):
-                    SerializerClass = import_string(self.expand_serializer)
-                else:
-                    SerializerClass = self.expand_serializer
-                serializer = SerializerClass(obj, context=context)
-                return HashableDict(serializer.data)
+            bits = field_name.split(".")
+            name = bits.pop(0)
+            if name == self.field_name:
+                ret = self.expand(obj, context, name)
+                for bit in bits:
+                    new_obj = getattr(obj, bit, None)
+                    if new_obj is not None:
+                        old_request = context["request"]
+                        new_context = context.copy()
+                        factory = APIRequestFactory()
+                        get = factory.get("{}?expand={}".format(old_request.path, bit))
+                        new_context["request"] = Request(get)
+                        ret[bit] = self.expand(new_obj, new_context, bit)
+                return ret
 
     def to_representation(self, obj):
         ret = super().to_representation(obj)
-        if self.expand_serializer is None:
+        if self.expand_serializers is None:
+            print("No expand serializers found.")
             return ret
         context = getattr(self, "context", None)
         if context is None:
+            print("No context found.")
             return ret
         request = context.get("request", None)
         if request is None:
+            print("No request found in context.")
             return ret
         query_params = getattr(request, "query_params", None)
         if query_params is None:
+            print("No query params found in request.")
             return ret
         query_param = query_params.get("expand", None)
         if query_param is None:
+            print("No param (expand) found in query_params.")
             return ret
         field_names = query_param.split(",")
         expanded = self.to_expanded_representation(obj, field_names, context)
