@@ -16,6 +16,7 @@ from rest_framework.serializers import (
 )
 
 from .mixins import ParameterisedFieldMixin
+from .utils import HashableDict
 
 
 class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
@@ -29,9 +30,20 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
     expand_serializer = None
 
     def __init__(self, *args, **kwargs):
+        self.read_only = True
         if self.expand_serializer is None:
             self.expand_serializer = kwargs.pop("expand_serializer", None)
         super().__init__(*args, **kwargs)
+
+    def to_expanded_representation(self, obj, field_names, context):
+        for field_name in field_names:
+            if self.field_name == field_name:
+                if isinstance(self.expand_serializer, str):
+                    SerializerClass = import_string(self.expand_serializer)
+                else:
+                    SerializerClass = self.expand_serializer
+                serializer = SerializerClass(obj, context=context)
+                return HashableDict(serializer.data)
 
     def to_representation(self, obj):
         ret = super().to_representation(obj)
@@ -50,15 +62,10 @@ class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
         if query_param is None:
             return ret
         field_names = query_param.split(",")
-        for field_name in field_names:
-            if self.field_name == field_name:
-                kw = {"context": self.context}
-                if isinstance(self.expand_serializer, str):
-                    sc = import_string(self.expand_serializer)
-                else:
-                    sc = self.expand_serializer
-                return sc(obj, **kw).data
-        return ret
+        expanded = self.to_expanded_representation(obj, field_names, context)
+        if expanded is None:
+            return ret
+        return expanded
 
 
 class LoadableImageField(ImageField):
