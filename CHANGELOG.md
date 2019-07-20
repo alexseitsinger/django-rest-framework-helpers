@@ -1,3 +1,13 @@
+<a name="v2.0.4"></a>
+## [v2.0.4](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.3...v2.0.4) (2019-07-20)
+
+### Bug Fixes
+- Adds HashableDict for reppresentation output. ([beaaa6b](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/beaaa6b1264b14411f2d1f64c03a99f3c7a8470b))
+
+### Features
+- Adds utils module. ([c312489](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c312489ac8cbc8fcffccab1a87ab6cf461c99999))
+
+
 <a name="v2.0.3"></a>
 ## [v2.0.3](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.0.2...v2.0.3) (2019-07-19)
 
