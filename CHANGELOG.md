@@ -1,3 +1,10 @@
+<a name="v4.0.2"></a>
+## [v4.0.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.1...v4.0.2) (2019-07-22)
+
+### Bug Fixes
+- Fixes getters for action mixins. ([2808fbd](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/2808fbd530618a1f6f0fe2d484f18cb633a84229))
+
+
 <a name="v4.0.1"></a>
 ## [v4.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.0...v4.0.1) (2019-07-22)
 
