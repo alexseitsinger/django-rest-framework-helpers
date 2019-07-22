@@ -465,19 +465,7 @@ class ValidateUserFieldMixin(ValidateCurrentUserMixin):
         return value
 
 
-class GetActionMixin(object):
-    """
-    Returns the current action verb or raises an exception.
-    """
-
-    def get_action(self):
-        action = getattr(self, "action", None)
-        if action is None:
-            raise AttributeError("No action found.")
-        return action
-
-
-class SerializerClassByActionMixin(GetActionMixin):
+class SerializerClassByActionMixin(object):
     """
     Return the serializer class based on the action verb.
     """
@@ -485,16 +473,13 @@ class SerializerClassByActionMixin(GetActionMixin):
     serializer_class_by_action = {}
 
     def get_serializer_class(self):
-        action = self.get_action()
-        try:
-            return self.serializer_class_by_action[action]
-        except KeyError:
-            return self.serializer_class_by_action["default"]
-        else:
-            return super().get_serializer_class()
+        attr = self.serializer_class_by_action
+        return attr.get(
+            self.action, attr.get("default", super().get_serializer_class())
+        )
 
 
-class PermissionClassesByActionMixin(GetActionMixin):
+class PermissionClassesByActionMixin(object):
     """
     Returns a list of permission classes to use based on the action verb.
     https://stackoverflow.com/questions/36001485/django-rest-framework-different-permission-per-methods-within-same-view
@@ -502,14 +487,15 @@ class PermissionClassesByActionMixin(GetActionMixin):
 
     permission_classes_by_action = {}
 
+    def get_permission_classes_for_action(self):
+        attr = self.permission_classes_by_action
+        return attr.get(self.action, attr.get("default", None))
+
     def get_permissions(self):
-        action = self.get_action()
-        try:
-            return [cls() for cls in self.permission_classes_by_action[action]]
-        except KeyError:
-            return [cls() for cls in self.permission_classes_by_action["default"]]
-        else:
+        classes = self.get_permissions_for_action()
+        if classes is None:
             return super().get_permissions()
+        return [cls() for cls in classes]
 
 
 class MultipleFieldLookupMixin(object):
