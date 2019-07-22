@@ -10,6 +10,24 @@ from django.shortcuts import get_object_or_404
 from rest_framework.serializers import ValidationError
 
 
+class SkippedFieldsMixin(object):
+    """
+    Dynamically removes fields from serializer.
+    https://stackoverflow.com/questions/27935558/dynamically-exclude-or-include-a-field-in-django-rest-framework-serializer
+    """
+
+    def __init__(self, *args, **kwargs):
+        skipped_fields = kwargs.pop("skipped_fields", None)
+        super().__init__(*args, **kwargs)
+        self.remove_skipped_fields(skipped_fields)
+
+    def remove_skipped_fields(self, skipped_fields=None):
+        if skipped_fields is not None:
+            for field_name in skipped_fields:
+                if field_name in self.fields:
+                    self.fields.pop(field_name)
+
+
 class GetOrCreateMixin(object):
     def is_valid(self, raise_exception=False):
         #
