@@ -1,3 +1,10 @@
+<a name="v4.0.1"></a>
+## [v4.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.0...v4.0.1) (2019-07-22)
+
+### Bug Fixes
+- Fixes self.action check. ([962b4a1](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/962b4a1b50e04e7300cd29f95b5690c2ebf2aec3))
+
+
 <a name="v4.0.0"></a>
 ## [v4.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v3.1.0...v4.0.0) (2019-07-22)
 
