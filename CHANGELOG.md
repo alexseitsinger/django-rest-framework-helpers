@@ -1,3 +1,10 @@
+<a name="v5.2.1"></a>
+## [v5.2.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.2.0...v5.2.1) (2019-07-22)
+
+### Bug Fixes
+- Fixes wrong endpoints response. ([8bcb14f](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8bcb14f9895bb915f7052d105651308733fd7276))
+
+
 <a name="v5.2.0"></a>
 ## [v5.2.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.1.0...v5.2.0) (2019-07-22)
 
