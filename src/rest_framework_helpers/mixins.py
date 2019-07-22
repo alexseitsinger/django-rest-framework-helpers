@@ -56,7 +56,7 @@ class EndpointsAllowedMixin(object):
     def get_endpoints(self, request, format):
         endpoints = super().get_endpoints(request, format)
         allowed = self.endpoints_allowed
-        for name, link in endpoints.items():
+        for name, _ in endpoints.items():
             if name not in allowed:
                 del endpoints[name]
         return endpoints
@@ -72,7 +72,7 @@ class EndpointsRemovedMixin(object):
     def get_endpoints(self, request, format):
         endpoints = super().get_endpoints(request, format)
         removed = self.endpoints_removed
-        for name, link in endpoints.items():
+        for name, _ in endpoints.items():
             if name in removed:
                 del endpoints[name]
         return endpoints
