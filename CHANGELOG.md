@@ -1,3 +1,13 @@
+<a name="v4.0.0"></a>
+## [v4.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v3.1.0...v4.0.0) (2019-07-22)
+
+### Code Refactoring
+- Deletes Base64ImageField. ([363edaf](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/363edaf4845db9a4cfb53174d85f54ac97b7ff53))
+- Deletes routers module. ([a48933a](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/a48933abb813a82dc4d80644285391517f4e9938))
+- Fixes import for action maps. ([0a80c51](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/0a80c51ea60b8ba976604aab5b6be55a9c7cf267))
+- Moved action maps to utils. ([3ad029e](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/3ad029e0154f00ff665eaaed6cd859febec4bdd7))
+
+
 <a name="v3.1.0"></a>
 ## [v3.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v3.0.0...v3.1.0) (2019-07-22)
 
