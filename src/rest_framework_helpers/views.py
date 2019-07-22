@@ -5,6 +5,7 @@ from rest_framework.reverse import reverse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+
 class APIRootView(APIView):
     views = {}
 
@@ -12,9 +13,7 @@ class APIRootView(APIView):
         endpoints = OrderedDict()
         for endpoint_name, view_name in self.views.items():
             endpoints[endpoint_name] = reverse(
-                view_name,
-                request=request,
-                format=format
+                view_name, request=request, format=format
             )
         return endpoints
 

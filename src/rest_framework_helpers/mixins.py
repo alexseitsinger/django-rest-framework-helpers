@@ -5,26 +5,10 @@ https://github.com/miki725/formslayer/blob/master/formslayer/pdf/relations.py#L7
 https://stackoverflow.com/questions/32038643/custom-hyperlinked-url-field-for-more-than-one-lookup-field-in-a-serializer-of-d
 https://stackoverflow.com/questions/43964007/django-rest-framework-get-or-create-for-primarykeyrelatedfield
 """
-import base64
-import six
-import uuid
-import pytz
-import imghdr
-import json
-import io
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.utils.module_loading import import_string
-from django.http.request import QueryDict
-from django.db import models
 from django.db.models import Manager
-from django.db.models.query import QuerySet
-from rest_framework.request import Request
-from rest_framework.test import APIRequestFactory, APIClient
-from rest_framework.reverse import reverse
-from rest_framework.relations import ManyRelatedField
-from rest_framework.parsers import JSONParser
 from rest_framework.serializers import (
     Field,
     HyperlinkedRelatedField,
@@ -50,6 +34,10 @@ from .utils import (
 
 
 class ExpandableMixin(object):
+    """
+    Turns a serializer field into an expandable field based on query params.
+    """
+
     query_param = "expand"
     settings_attr_name = "expand"
     required_attrs = ["model_name"]
@@ -154,20 +142,17 @@ class ExpandableMixin(object):
         return HashableDict(expanded)
 
     def get_expanded_object(
-        self,
-        obj,
-        field_name=None,
-        parent=None,
-        field_options=None,
-        expand_options=None,
-        ignored_fields=[],
+        self, obj, field_name=None, parent=None, field_options=None, expand_options=None
     ):
+        """
+        Returns the expanded object with its specified fields expanded as well.
+        """
         opts = [field_options, expand_options]
 
         if field_name is None:
             if any([x is None for x in opts]):
                 raise RuntimeError(
-                    "The expand and field options cannot be empty with no field name."
+                    "The expand and field options must be provided when no field name is provided."
                 )
 
         prefix = None
@@ -192,11 +177,7 @@ class ExpandableMixin(object):
             exopts = self.get_expand_options(obj, nested_path)
             fopts = self.get_field_options(nested_path, parent=obj)
             field = exopts["field"]
-            if field == obj:
-                print("Same object!")
-            elif has_circular_reference(field) is True:
-                print("Circular reference!")
-            else:
+            if field != obj and has_circular_reference(field) is False:
                 nested_obj = self.get_expanded_object(
                     field,
                     field_name=nested_path,
@@ -208,15 +189,20 @@ class ExpandableMixin(object):
         return expanded
 
     def get_expanded_representation(self, obj, field_names, parent=None):
+        """
+        Returns the expanded object if the field names provided match those specified in
+        settings.
+        """
         for field_name in field_names:
             full_name = get_model_field_path(self.model_name, field_name)
             for item in self.settings:
                 if full_name in item.get("fields", []):
-                    return self.get_expanded_object(
-                        obj, full_name, parent, ignored_fields=["userprofile"]
-                    )
+                    return self.get_expanded_object(obj, full_name, parent=parent)
 
     def expand_object(self, obj, field_options, expand_options):
+        """
+        Returns the serialized representation of an object or raises an exception.
+        """
         context = self.context
         serializer = field_options["serializer"]
         many = field_options["many"]
@@ -243,6 +229,9 @@ class ExpandableMixin(object):
             raise exc
 
     def get_expand_options(self, obj, full_path=""):
+        """
+        Returns a dictionary of options to use for expanding an object.
+        """
         field, valid_bits, skipped_bits, ignored_bits, mapping = get_field_bits(
             obj, full_path
         )
@@ -259,7 +248,7 @@ class ExpandableMixin(object):
 
     def get_field_options(self, field_name, parent):
         """
-        Returns a dictionary of kwargs to use for expanding the specified field or
+        Returns a dictionary of options to use for expanding the specified field or
         raises an exception.
         """
         matched = False
@@ -335,11 +324,12 @@ class SkippedFieldsMixin(object):
 
 
 class GetOrCreateMixin(object):
+    """
+    Allows a get or create of an object.
+    https://stackoverflow.com/questions/25026034/django-rest-framework-modelserializer-get-or-create-functionality
+    """
+
     def is_valid(self, raise_exception=False):
-        #
-        # Allows us to get_or_create an object.
-        #
-        # https://stackoverflow.com/questions/25026034/django-rest-framework-modelserializer-get-or-create-functionality
         if hasattr(self, "initial_data"):
             # if we are instantiating with data={something}.
             try:
@@ -361,6 +351,10 @@ class GetOrCreateMixin(object):
 
 
 class OrderByFieldNameMixin(object):
+    """
+    Returns querysets ordered by the field name specified.
+    """
+
     order_by_field_name = None
 
     def get_queryset(self):
@@ -371,6 +365,10 @@ class OrderByFieldNameMixin(object):
 
 
 class ExcludeKwargsMixin(object):
+    """
+    Returns querysets that exclude specified kwargs.
+    """
+
     exclude_kwargs = {}
 
     def get_queryset(self):
@@ -379,10 +377,10 @@ class ExcludeKwargsMixin(object):
         return queryset
 
 
-class IsObjectUserQuerysetMixin(object):
+class CheckQuerysetObjectPermissionsMixin(object):
     """
     Check object permissions for each object in queryset.
-    NOTE: Requires that the permission classes include an object permission check. ie: IsObjectUser
+    NOTE: Requires that the permission classes include an object permission check.
     """
 
     def get_queryset(self):
@@ -392,120 +390,132 @@ class IsObjectUserQuerysetMixin(object):
         return queryset
 
 
-class NestedUserFieldsValidatorsMixin(object):
+class ValidateCurrentUserMixin(object):
     """
-    Creates a validator for a fields dynamically. Validates the nested fields value against the current user.
+    Adds a current_user property to the object.
+    """
+
+    @property
+    def current_user(self):
+        context = getattr(self, "context", None)
+        if context is None:
+            raise AttributeError("There is no context.")
+        request = context.get("request", None)
+        if request is None:
+            raise KeyError("There is not request in context.")
+        user = getattr(request, "user", None)
+        if user is None:
+            raise AttributeError("There is not user in the request")
+        return user
+
+    def validate_with_current_user(self, value):
+        if self.current_user != value:
+            raise ValidationError(
+                "The user specified does not match the current session."
+            )
+
+
+class NestedUserFieldsValidatorsMixin(ValidateCurrentUserMixin):
+    """
+    Creates a validator for specified fields. Validates the fields value against the
+    current user.
     """
 
     nested_user_fields = {}
 
-    def set_nested_user_fields_validators(self):
-        # create the path to get from the value
-        # path = self.nested_user_field
+    def create_validator_for_nested_user_field(self, bits):
+        def validator(value):
+            attr = value
+            last = value
+            for bit in bits:
+                last = attr
+                attr = getattr(attr, bit, None)
+                if attr is None:
+                    raise AttributeError(
+                        "The attribute '{}' does not exist on object {}.".format(
+                            bit, last
+                        )
+                    )
+            self.validate_with_current_user(attr)
+            return value
+
+        return validator
+
+    def set_validators_for_nested_user_fields(self):
         for field_name, path in self.nested_user_fields.items():
             validator_name = "validate_{}".format(field_name)
             bits = path.split(".")
-
-            # create a method for the validator
-            def validator(value):
-                attr = value
-                for name in bits:
-                    attr = getattr(attr, name)
-                if self.context["request"].user != attr:
-                    raise ValidationError("User must match the current session")
-                return value
-
-            # dynamically set the validator method
-            setattr(self, validator_name, validator)
+            validator = getattr(self, validator_name, None)
+            if validator is None:
+                validator = self.create_validator_for_nested_user_field(bits)
+                setattr(self, validator_name, validator)
 
     def __init__(self, *args, **kwargs):
-        self.set_nested_user_fields_validators()
+        self.set_validators_for_nested_user_fields()
         super().__init__(*args, **kwargs)
 
 
-class ValidateUserMixin(object):
+class ValidateUserFieldMixin(ValidateCurrentUserMixin):
+    """
+    Adds a validator for a 'user' field on a serializer.
+    """
+
     def validate_user(self, value):
-        if self.context["request"].user != value:
-            raise ValidationError("User must match the current session")
+        self.validate_with_current_user(value)
         return value
 
 
-class ValidateFieldForCurrentUserMixin(object):
-    validate_field_for_current_user = None
+class GetActionMixin(object):
+    """
+    Returns the current action verb or raises an exception.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.add_validator_for_field()
-
-    def add_validator_for_field(self):
-        def validator(value):
-            if self.context["request"].user != value:
-                raise ValidationError("User must match the current sesssion")
-            return value
-
-        validator_name = "validate_{}".format(self.validate_field_for_current_user)
-        setattr(self, validator_name, validator)
+    def get_action(self):
+        action = getattr(self, "action", None)
+        if action is None:
+            raise AttributeError("No action found.")
+        return action
 
 
-class SerializerClassByActionMixin(object):
-    """ Return the serializer class based on the action verb. """
+class SerializerClassByActionMixin(GetActionMixin):
+    """
+    Return the serializer class based on the action verb.
+    """
+
+    serializer_class_by_action = {}
 
     def get_serializer_class(self):
+        action = self.get_action()
         try:
-            return self.serializer_class_by_action[self.action]
+            return self.serializer_class_by_action[action]
         except KeyError:
             return self.serializer_class_by_action["default"]
+        else:
+            return super().get_serializer_class()
 
 
-class QuerysetObjectPermissionsMixin(object):
+class PermissionClassesByActionMixin(GetActionMixin):
     """
-        A mixin class to force checking object permissions for each object in queryset.
-    """
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        for obj in queryset:
-            self.check_object_permissions(self.request, obj)
-        return queryset
-
-
-class PermissionClassesByActionMixin(object):
-    """
+    Returns a list of permission classes to use based on the action verb.
     https://stackoverflow.com/questions/36001485/django-rest-framework-different-permission-per-methods-within-same-view
     """
 
+    permission_classes_by_action = {}
+
     def get_permissions(self):
+        action = self.get_action()
         try:
-            # return permission_classes depending on `action`
-            return [
-                permission()
-                for permission in self.permission_classes_by_action[self.action]
-            ]
+            return [cls() for cls in self.permission_classes_by_action[action]]
         except KeyError:
-            # action is not set return default permission_classes
-            return [
-                permission()
-                for permission in self.permission_classes_by_action["default"]
-            ]
-
-
-class AlphabeticalOrderQuerysetMixin(object):
-
-    # the field to aphabetize things by.
-    # defaults to "name"
-    alphabetical_order_field = "name"
-
-    def get_queryset(self):
-        queryset = super(AlphabeticalOrderQuerysetMixin, self).get_queryset()
-        # queryset = self.filter_queryset(queryset)
-        queryset = queryset.order_by(self.alphabetical_order_field)
-        return queryset
+            return [cls() for cls in self.permission_classes_by_action["default"]]
+        else:
+            return super().get_permissions()
 
 
 class MultipleFieldLookupMixin(object):
     """
-    Apply this mixin to any view or viewset to get multiple field filtering
-    based on a `lookup_fields` attribute, instead of the default single field filtering.
+    Apply this mixin to any view or viewset to get multiple field filtering based on a
+    `lookup_fields` attribute, instead of the default single field filtering.
     """
 
     def get_object(self):
@@ -519,7 +529,9 @@ class MultipleFieldLookupMixin(object):
 
 
 class HyperlinkListMixin(object):
-    """ List URL attribute from each object. """
+    """
+    List URL attribute from each object.
+    """
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -537,7 +549,8 @@ class HyperlinkListMixin(object):
 
 class ParameterisedViewMixin(object):
     """
-        Used in conjunction with the ParameterisedFieldMixin to enable multiple custom lookup_fields for queries.
+    Used in conjunction with the ParameterisedFieldMixin to enable multiple custom
+    lookup_fields for queries.
     """
 
     lookup_fields = [("pk", "pk")]
@@ -559,7 +572,8 @@ class ParameterisedViewMixin(object):
 
     def get_object(self):
         """
-        Filter the queryset to return an object using the parameterised procedure instead of the default, so queries can involve more than a single string.
+        Filter the queryset to return an object using the parameterised procedure
+        instead of the default, so queries can involve more than a single string.
         """
         queryset = self.get_queryset()
         queryset = self.filter_queryset(queryset)
@@ -571,7 +585,8 @@ class ParameterisedViewMixin(object):
 
 class ParameterisedFieldMixin(object):
     """
-        Used in conjunction with the ParameterisedViewMixin to enable multiple custom lookup_fields for serializing.
+    Used in conjunction with the ParameterisedViewMixin to enable multiple custom
+    lookup_fields for serializing.
     """
 
     lookup_fields = [("pk", "pk")]
@@ -631,15 +646,16 @@ class ParameterisedFieldMixin(object):
 class MeAliasMixin(object):
     def initial(self, request, *args, **kwargs):
         """
-        This is the 'dispatch' method for rest_framework.
-        This has <request.data> etc.
+        This is the 'dispatch' method for rest_framework.  This has <request.data> etc.
 
-        This augments the request.data to change any values from "me" to request.user.username.
+        This augments the request.data to change any values from "me" to
+        request.user.username.
 
-        (TODO: Check what the url_kwarg is to determine what part of request.user.<attr> to use)
+        (TODO: Check what the url_kwarg is to determine what part of request.user.<attr>
+        to use)
 
-        NOTE:
-        This affects multipart/form-data when we augment its contents and causes the formData to be invalid/corrupt.
+        NOTE: This affects multipart/form-data when we augment its contents and causes
+        the formData to be invalid/corrupt.
         """
         if request.user.is_authenticated:
             for k, v in request.data.items():
