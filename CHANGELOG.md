@@ -1,3 +1,10 @@
+<a name="v5.0.0"></a>
+## [v5.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.2...v5.0.0) (2019-07-22)
+
+### Features
+- Renames ExpandableField. ([6cc97b7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/6cc97b740f3ce649c51622927e1ed35c71663be1))
+
+
 <a name="v4.0.2"></a>
 ## [v4.0.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.1...v4.0.2) (2019-07-22)
 
