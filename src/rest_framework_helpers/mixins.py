@@ -474,9 +474,7 @@ class SerializerClassByActionMixin(object):
 
     def get_serializer_class(self):
         attr = self.serializer_class_by_action
-        return attr.get(
-            self.action, attr.get("default", super().get_serializer_class())
-        )
+        return attr.get(self.action, super().get_serializer_class())
 
 
 class PermissionClassesByActionMixin(object):
@@ -487,15 +485,14 @@ class PermissionClassesByActionMixin(object):
 
     permission_classes_by_action = {}
 
-    def get_permission_classes_for_action(self):
-        attr = self.permission_classes_by_action
-        return attr.get(self.action, attr.get("default", None))
-
     def get_permissions(self):
-        classes = self.get_permissions_for_action()
-        if classes is None:
-            return super().get_permissions()
-        return [cls() for cls in classes]
+        attr = self.permission_classes_by_action
+        for_all = attr.get("all", [])
+        for_action = attr.get(self.action, [])
+        permission_classes = for_all + for_action
+        if len(permission_classes):
+            return [permission_class() for permission_class in permission_classes]
+        return super().get_permissions()
 
 
 class MultipleFieldLookupMixin(object):
