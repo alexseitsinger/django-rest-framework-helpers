@@ -1,3 +1,16 @@
+<a name="v5.2.0"></a>
+## [v5.2.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.1.0...v5.2.0) (2019-07-22)
+
+### Code Refactoring
+- Reformats endpoint mixins. ([c8ea3aa](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c8ea3aac0b5473576dcb11ecc22dcf5aa44e47ec))
+- Renames variables and methods. ([c5033c7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c5033c7f8bfd2a9e0e60f55fea09cdd03952b5eb))
+- Updates APIRootView. ([d73a2d0](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/d73a2d072790553d1181a7bee8861c994fd0833b))
+
+### Features
+- Adds APIRootView mixins. ([c8bd351](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c8bd351f6bfb03475419dc79e674de5a808a9aef))
+- Adds view name formatting. ([cf91061](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/cf910616d23cbc46abea564f9f5f7b3c30170199))
+
+
 <a name="v5.1.0"></a>
 ## [v5.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.0.0...v5.1.0) (2019-07-22)
 
