@@ -1,3 +1,12 @@
+<a name="v3.1.0"></a>
+## [v3.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v3.0.0...v3.1.0) (2019-07-22)
+
+### Features
+- Adds Expandable mixin and field. ([6c2261c](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/6c2261c7925c0726792e866489b29797010f96eb))
+- Adds new mixin. ([4f53bb4](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/4f53bb48d4e30e344095bcc9aaef53ed3d6e038b))
+- Adds new util methods. ([e5b0344](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/e5b03445583d4b182c635018c47a356c805e64e1))
+
+
 <a name="v3.0.0"></a>
 ## [v3.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v2.1.0...v3.0.0) (2019-07-20)
 
