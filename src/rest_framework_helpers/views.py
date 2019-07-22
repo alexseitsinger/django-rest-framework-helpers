@@ -5,15 +5,15 @@ from rest_framework.views import APIView
 
 
 class APIRootView(APIView):
-    views = {}
-    views_seen = {}
-    endpoints = None
+    endpoints = {}
+    endpoints_seen = {}
+    endpoints_created = None
 
-    def is_views_changed(self, endpoints, views, seen):
+    def is_endpoints_changed(self, endpoints, seen, created):
         changed = False
-        if endpoints is None:
+        if created is None:
             changed = True
-        for name, view_name in views.items():
+        for name, view_name in endpoints.items():
             if changed is True:
                 break
             if name not in seen or seen[name] != view_name:
@@ -21,19 +21,19 @@ class APIRootView(APIView):
                 changed = True
         return changed
 
-    def create_endpoints(self, request, format, views):
-        endpoints = OrderedDict()
-        for name, view_name in views.items():
-            endpoints[name] = reverse(view_name, request=request, format=format)
-        return endpoints
+    def create_endpoints(self, request, format, endpoints):
+        created = OrderedDict()
+        for name, view_name in endpoints.items():
+            created[name] = reverse(view_name, request=request, format=format)
+        return created
 
     def get_endpoints(self, request, format):
         endpoints = self.endpoints
-        views = self.views
-        seen = self.views_seen
-        changed = self.is_views_changed(endpoints, views, seen)
+        seen = self.endpoints_seen
+        created = self.endpoints_created
+        changed = self.is_endpoints_changed(endpoints, seen, created)
         if changed is True:
-            endpoints = self.endpoints = self.create_endpoints(request, format, views)
+            created = self.created = self.create_endpoints(request, format, endpoints)
         return endpoints
 
     def get(self, request, format=None):
