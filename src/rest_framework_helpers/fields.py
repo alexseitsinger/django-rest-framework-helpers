@@ -3,10 +3,20 @@ import six
 import uuid
 import pytz
 import imghdr
+import json
+import io
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.utils.module_loading import import_string
 from django.http.request import QueryDict
+from django.db import models
+from django.db.models import Manager
+from django.db.models.query import QuerySet
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory, APIClient
+from rest_framework.reverse import reverse
+from rest_framework.relations import ManyRelatedField
+from rest_framework.parsers import JSONParser
 from rest_framework.serializers import (
     Field,
     HyperlinkedRelatedField,
@@ -14,109 +24,30 @@ from rest_framework.serializers import (
     HyperlinkedModelSerializer,
     ImageField,
     ValidationError,
+    ListSerializer,
 )
-from rest_framework.request import Request
-from rest_framework.test import APIRequestFactory
-
-from .mixins import ParameterisedFieldMixin
-from .utils import HashableDict
 
 
-class ExpandableHyperlinkedRelatedField(HyperlinkedRelatedField):
+from .mixins import ParameterisedFieldMixin, ExpandableMixin
+
+
+class ExpandableRelatedField(ExpandableMixin, HyperlinkedRelatedField):
     """
     A serializer field that will output its real object when expanded.
 
     eg:
         GET http://www.example.com/api/v1/models/1?expand=field_name,field_name
 
-        expand_serializers = (
+        expandable = [
             {
-                "field_names": ("assigned_to", "assigned_by",),
-                "serializer_path": "src.path.to.SerializerClass",
-                "serializer_class": None,
+                "fields": ["model.field_name", "model.field_name"],
+                "serializer": "path.to.serializer.class.SerializerClass",
             },
-            {
-                "field_names": ("userprofile",),
-                "serializer_path": "src.path.to.SerializerClass",
-                "serializer_class": None,
-            },
-        )
+        ]
     """
 
-    expand_serializers = None
-
-    def __init__(self, *args, **kwargs):
-        if self.expand_serializers is None:
-            self.expand_serializers = kwargs.pop("expand_serializers", None)
-        super().__init__(*args, **kwargs)
-
-    def get_expand_serializer_class(self, field_name):
-        if self.expand_serializers is None:
-            self.expand_serializers = ()
-        target = None
-        for item in self.expand_serializers:
-            if field_name in item["field_names"]:
-                target = item
-        if target is None:
-            return None
-        serializer_class = target.get("serializer_class", None)
-        if serializer_class is None:
-            serializer_path = target.get("serializer_path", None)
-            if serializer_path is None:
-                return None
-            serializer_class = import_string(serializer_path)
-            target.update({"serializer_class": serializer_class})
-        return serializer_class
-
-    def expand(self, obj, context, field_name):
-        SerializerClass = self.get_expand_serializer_class(field_name)
-        serializer = SerializerClass(obj, context=context)
-        data = serializer.data
-        return HashableDict(data)
-
-    def to_expanded_representation(self, obj, field_names, context):
-        for field_name in field_names:
-            bits = field_name.split(".")
-            name = bits.pop(0)
-            if name == self.field_name:
-                ret = self.expand(obj, context, name)
-                for bit in bits:
-                    new_obj = getattr(obj, bit, None)
-                    if new_obj is not None:
-                        old_request = context["request"]
-                        new_context = context.copy()
-                        factory = APIRequestFactory()
-                        get = factory.get("{}?expand={}".format(old_request.path, bit))
-                        new_context["request"] = Request(get)
-                        ret[bit] = self.expand(new_obj, new_context, bit)
-                return ret
-
     def to_representation(self, obj):
-        ret = super().to_representation(obj)
-        if self.expand_serializers is None:
-            print("No expand serializers found.")
-            return ret
-        context = getattr(self, "context", None)
-        if context is None:
-            print("No context found.")
-            return ret
-        request = context.get("request", None)
-        if request is None:
-            print("No request found in context.")
-            return ret
-        query_params = getattr(request, "query_params", None)
-        if query_params is None:
-            print("No query params found in request.")
-            return ret
-        query_param = query_params.get("expand", None)
-        if query_param is None:
-            print("No param (expand) found in query_params.")
-            return ret
-        field_names = query_param.split(",")
-        expanded = self.to_expanded_representation(obj, field_names, context)
-        if expanded is None:
-            return ret
-        return expanded
+        return self.get_representation(obj)
 
 
 class LoadableImageField(ImageField):

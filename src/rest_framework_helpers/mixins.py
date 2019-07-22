@@ -5,9 +5,315 @@ https://github.com/miki725/formslayer/blob/master/formslayer/pdf/relations.py#L7
 https://stackoverflow.com/questions/32038643/custom-hyperlinked-url-field-for-more-than-one-lookup-field-in-a-serializer-of-d
 https://stackoverflow.com/questions/43964007/django-rest-framework-get-or-create-for-primarykeyrelatedfield
 """
+import base64
+import six
+import uuid
+import pytz
+import imghdr
+import json
+import io
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
-from rest_framework.serializers import ValidationError
+from django.utils.module_loading import import_string
+from django.http.request import QueryDict
+from django.db import models
+from django.db.models import Manager
+from django.db.models.query import QuerySet
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory, APIClient
+from rest_framework.reverse import reverse
+from rest_framework.relations import ManyRelatedField
+from rest_framework.parsers import JSONParser
+from rest_framework.serializers import (
+    Field,
+    HyperlinkedRelatedField,
+    HyperlinkedIdentityField,
+    HyperlinkedModelSerializer,
+    ImageField,
+    ValidationError,
+    ListSerializer,
+)
+
+from .utils import (
+    get_class_name,
+    get_model_field_path,
+    get_field_bits,
+    get_model_path,
+    get_mapped_path,
+    get_nested_attr,
+    has_circular_reference,
+    has_ancestor,
+    HashableList,
+    HashableDict,
+)
+
+
+class ExpandableMixin(object):
+    query_param = "expand"
+    settings_attr_name = "expand"
+    required_attrs = ["model_name"]
+    initialized_attrs = required_attrs + ["target_field_name"]
+
+    def __init__(self, *args, **kwargs):
+        for attr_name in self.initialized_attrs:
+            attr = getattr(self, attr_name, None)
+            if attr is None:
+                attr = kwargs.pop(attr_name, None)
+            if attr is None and attr_name in self.required_attrs:
+                raise AttributeError(
+                    "The attribute '{}' is required.".format(attr_name)
+                )
+            setattr(self, attr_name, attr)
+        self.settings = self.get_settings()
+        super().__init__(*args, **kwargs)
+
+    def get_settings(self):
+        """
+        Returns the current settings for expanding.
+        """
+        settings = getattr(self, "settings", None)
+        if settings is not None:
+            return settings
+        settings_attr_name = "settings_attr_name"
+        attr_name = getattr(self, settings_attr_name, None)
+        if attr_name is None:
+            raise AttributeError("The '{}' is required.".format(settings_attr_name))
+        attr = getattr(self, attr_name, None)
+        if attr is None:
+            raise AttributeError("The '{}' settings are required.".format(attr_name))
+        return attr
+
+    def get_request(self, context=None):
+        """
+        Returns the current request object from the context.
+        """
+        if context is None:
+            context = getattr(self, "context", None)
+        if context is None:
+            raise AttributeError("Context not found.")
+        request = context.get("request", None)
+        if request is None:
+            raise AttributeError("Request not found in context.")
+        return request
+
+    def get_query_param(self, request=None):
+        if request is None:
+            request = self.get_request()
+        query_params = getattr(request, "query_params", None)
+        if query_params is None:
+            return None
+        query_param = query_params.get(self.query_param, None)
+        if query_param is None:
+            return None
+        if not len(query_param):
+            return None
+        return query_param
+
+    def get_expanded_field_names(self, request=None):
+        """
+        Returns a list of field names to expand.
+        """
+        query_param = self.get_query_param()
+        return query_param.split(",")
+
+    @property
+    def has_query_param(self):
+        query_param = self.get_query_param()
+        if query_param is None:
+            return False
+        return True
+
+    def get_representation(self, obj, ancestor_models=[]):
+        """
+        Fascade method to return the representation.
+        """
+        if self.has_query_param:
+            if any([has_ancestor(obj, x) is True for x in ancestor_models]):
+                return self.to_default_representation(obj)
+            return self.to_expanded_representation(obj)
+        else:
+            return self.to_default_representation(obj)
+
+    def to_default_representation(self, obj):
+        """
+        Method for converting the object to its default representation.
+        """
+        return super().to_representation(obj)
+
+    def to_expanded_representation(self, obj):
+        """
+        Method for converting the object to an expanded representation.
+        """
+        field_names = self.get_expanded_field_names()
+        expanded = self.get_expanded_representation(obj, field_names)
+        if expanded is None:
+            return self.to_default_representation(obj)
+        if isinstance(expanded, list):
+            return HashableList(expanded)
+        return HashableDict(expanded)
+
+    def get_expanded_object(
+        self,
+        obj,
+        field_name=None,
+        parent=None,
+        field_options=None,
+        expand_options=None,
+        ignored_fields=[],
+    ):
+        opts = [field_options, expand_options]
+
+        if field_name is None:
+            if any([x is None for x in opts]):
+                raise RuntimeError(
+                    "The expand and field options cannot be empty with no field name."
+                )
+
+        prefix = None
+        suffix = None
+
+        if field_name is not None:
+            prefix, suffix = field_name.rsplit(".", 1)
+
+            if all([x is None for x in opts]):
+                attr = getattr(obj, suffix, None)
+                if attr is not None and isinstance(attr, Manager):
+                    field_options = self.get_field_options(prefix, parent)
+                    expand_options = self.get_expand_options(obj, prefix)
+                else:
+                    field_options = self.get_field_options(field_name, parent)
+                    expand_options = self.get_expand_options(obj, field_name)
+
+        expanded = self.expand_object(obj, field_options, expand_options)
+
+        if all([x is not None for x in [prefix, suffix]]):
+            nested_path = get_model_field_path(prefix, suffix)
+            exopts = self.get_expand_options(obj, nested_path)
+            fopts = self.get_field_options(nested_path, parent=obj)
+            field = exopts["field"]
+            if field == obj:
+                print("Same object!")
+            elif has_circular_reference(field) is True:
+                print("Circular reference!")
+            else:
+                nested_obj = self.get_expanded_object(
+                    field,
+                    field_name=nested_path,
+                    parent=obj,
+                    field_options=fopts,
+                    expand_options=exopts,
+                )
+                expanded[suffix] = nested_obj
+        return expanded
+
+    def get_expanded_representation(self, obj, field_names, parent=None):
+        for field_name in field_names:
+            full_name = get_model_field_path(self.model_name, field_name)
+            for item in self.settings:
+                if full_name in item.get("fields", []):
+                    return self.get_expanded_object(
+                        obj, full_name, parent, ignored_fields=["userprofile"]
+                    )
+
+    def expand_object(self, obj, field_options, expand_options):
+        context = self.context
+        serializer = field_options["serializer"]
+        many = field_options["many"]
+        serializer_class = self.get_serializer_class(serializer)
+        class_name = get_class_name(self)
+        try:
+            instance = serializer_class(
+                context=context,
+                many=many,
+                skipped_fields=field_options["skipped_fields"],
+            )
+            # if many is True and not isinstance(obj, QuerySet):
+            # obj = QuerySet(obj)
+            rep = instance.to_representation(obj)
+            return rep
+        except AttributeError as exc:
+            msg = str(exc)
+            if msg.startswith("'ManyRelatedManager' object has no attribute"):
+                raise AttributeError(
+                    "{class_name}'s expandable attr is missing: 'many': True".format(
+                        class_name=class_name
+                    )
+                )
+            raise exc
+
+    def get_expand_options(self, obj, full_path=""):
+        field, valid_bits, skipped_bits, ignored_bits, mapping = get_field_bits(
+            obj, full_path
+        )
+        mapped_path = get_mapped_path(mapping)
+        return {
+            "field": field,
+            "path": mapped_path,
+            "bits": {
+                "valid": valid_bits,
+                "skipped": skipped_bits,
+                "ignored": ignored_bits,
+            },
+        }
+
+    def get_field_options(self, field_name, parent):
+        """
+        Returns a dictionary of kwargs to use for expanding the specified field or
+        raises an exception.
+        """
+        matched = False
+        ret = {
+            "serializer": "path.to.serializer.class.SerializerClass",
+            "many": False,
+            "skipped_fields": [],
+        }
+
+        for item in self.settings:
+            if field_name in item.get("fields", []):
+                matched = True
+                ret["serializer"] = item.get("serializer", ret["serializer"])
+                ret["many"] = item.get("many", ret["many"])
+                ret["skipped_fields"] = item.get(
+                    "skipped_fields", ret["skipped_fields"]
+                )
+
+        if matched is False:
+            raise AttributeError(
+                "There is no specification for '{field_name}' in {class_name}RelatedField.\n\n"
+                "Add a dictionary to the 'expandable' list with:\n"
+                "    'serializer': '{serializer_path}'\n"
+                "    'fields': ['{field_name}']\n"
+                "    'many': {many}".format(
+                    field_name=field_name,
+                    class_name=get_class_name(parent),
+                    serializer_path=ret["serializer"],
+                    many=ret["many"],
+                )
+            )
+
+        return ret
+
+    def get_serializer_class(self, serializer_path):
+        """
+        Returns the serializer class to use for serializing the object instances.
+        """
+        target = None
+
+        for item in self.settings:
+            if serializer_path == item["serializer"]:
+                target = item
+
+        if target is None:
+            raise AttributeError(
+                "Failed to find an entry for serializer '{}'.".format(serializer_path)
+            )
+
+        klass = target.get("serializer_class", None)
+        if klass is None:
+            klass = target["serializer_class"] = import_string(serializer_path)
+
+        return klass
 
 
 class SkippedFieldsMixin(object):
