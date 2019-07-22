@@ -51,8 +51,10 @@ class APIRootView(APIView):
         created = self.endpoints_created
         changed = self.is_endpoints_changed(endpoints, seen, created)
         if changed is True:
-            created = self.created = self.create_endpoints(request, format, endpoints)
-        return endpoints
+            created = self.endpoints_created = self.create_endpoints(
+                request, format, endpoints
+            )
+        return created
 
     def get(self, request, format=None):
         return Response(self.get_endpoints(request, format))
