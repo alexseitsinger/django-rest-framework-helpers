@@ -1,3 +1,10 @@
+<a name="v5.1.0"></a>
+## [v5.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.0.0...v5.1.0) (2019-07-22)
+
+### Features
+- Adds default permissions for mixin. ([dcb4454](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/dcb4454d7d1a1c312f1b37b855565c650d05e377))
+
+
 <a name="v5.0.0"></a>
 ## [v5.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v4.0.2...v5.0.0) (2019-07-22)
 
