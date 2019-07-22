@@ -9,6 +9,8 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.shortcuts import get_object_or_404
 from django.utils.module_loading import import_string
 from django.db.models import Manager
+from django.conf import settings
+from django.http import Http404
 from rest_framework.serializers import (
     Field,
     HyperlinkedRelatedField,
@@ -31,6 +33,49 @@ from .utils import (
     HashableList,
     HashableDict,
 )
+
+
+class DebugOnlyResponseMixin(object):
+    """
+    Returns the response if in DEBUG mode, otherwise raises a 404.
+    """
+
+    def get(self, request, format=None):
+        if settings.DEBUG is False:
+            return Http404()
+        return super().get(request, format)
+
+
+class EndpointsAllowedMixin(object):
+    """
+    Only returns endpoints that are allowed.
+    """
+
+    endpoints_allowed = []
+
+    def get_endpoints(self, request, format):
+        endpoints = super().get_endpoints(request, format)
+        allowed = self.endpoints_allowed
+        for name, link in endpoints.items():
+            if name not in allowed:
+                del endpoints[name]
+        return endpoints
+
+
+class EndpointsRemovedMixin(object):
+    """
+    Removes the named endpoints from the response.
+    """
+
+    endpoints_removed = []
+
+    def get_endpoints(self, request, format):
+        endpoints = super().get_endpoints(request, format)
+        removed = self.endpoints_removed
+        for name, link in endpoints.items():
+            if name in removed:
+                del endpoints[name]
+        return endpoints
 
 
 class ExpandableMixin(object):
