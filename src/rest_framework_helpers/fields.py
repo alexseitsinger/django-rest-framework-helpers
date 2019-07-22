@@ -7,6 +7,7 @@ from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from rest_framework.serializers import (
     Field,
+    SlugRelatedField,
     HyperlinkedRelatedField,
     HyperlinkedIdentityField,
     HyperlinkedModelSerializer,
@@ -19,7 +20,7 @@ from rest_framework.serializers import (
 from .mixins import ParameterisedFieldMixin, ExpandableMixin
 
 
-class ExpandableRelatedField(ExpandableMixin, HyperlinkedRelatedField):
+class ExpandableHyperlinkedRelatedField(ExpandableMixin, HyperlinkedRelatedField):
     """
     A serializer field that will output its real object when expanded.
 
@@ -34,6 +35,11 @@ class ExpandableRelatedField(ExpandableMixin, HyperlinkedRelatedField):
         ]
     """
 
+    def to_representation(self, obj):
+        return self.get_representation(obj)
+
+
+class ExpandableSlugRelatedField(ExpandableMixin, SlugRelatedField):
     def to_representation(self, obj):
         return self.get_representation(obj)
 
