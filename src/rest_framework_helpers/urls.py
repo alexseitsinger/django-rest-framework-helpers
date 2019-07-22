@@ -3,7 +3,8 @@ import re
 from django.conf import settings
 from django.conf.urls import url
 from django.utils.module_loading import import_string
-from .action_maps import detail_route, list_route
+
+from .utils import ACTION_MAPS
 
 
 def load_urls(
@@ -34,7 +35,7 @@ def detail_route_url(viewset, lookup_field, ignored=[]):
         regex=r"^{}/(?!({})/?$)(?P<{}>[^/.]+)/?$".format(
             name_plural_spaceless, "|".join([name for name in ignored]), lookup_field
         ),
-        view=viewset.as_view(actions=detail_route),
+        view=viewset.as_view(actions=ACTION_MAPS["detail_route"]),
         name="{}-detail".format(name),
     )
 
@@ -46,7 +47,7 @@ def list_route_url(viewset):
     name_plural_spaceless = re.sub(r"\s+", "", name_plural)
     return url(
         regex=r"^{}/?$".format(name_plural_spaceless),
-        view=viewset.as_view(actions=list_route),
+        view=viewset.as_view(actions=ACTION_MAPS["list_route"]),
         name="{}-list".format(name),
     )
 
