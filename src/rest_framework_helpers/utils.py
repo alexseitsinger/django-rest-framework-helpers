@@ -154,7 +154,6 @@ def get_model_field_path(model_name, *args):
         if parts[0] != model_name:
             parts = [model_name.lower()] + parts
     full = ".".join(parts)
-    print("full: ", full)
     return full
 
 
