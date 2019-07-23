@@ -9,7 +9,7 @@ class APIRootView(APIView):
     endpoints_seen = {}
     endpoints_created = None
     view_name_prefix = ""
-    view_name_suffix = "-list"
+    view_name_suffix = ""
 
     def is_endpoints_changed(self, endpoints, seen, created):
         changed = False
