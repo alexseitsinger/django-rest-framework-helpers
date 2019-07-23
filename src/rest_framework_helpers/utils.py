@@ -104,6 +104,29 @@ def has_ancestor(obj, model_path, checked=[]):
     return result
 
 
+def get_path_variations(path):
+    variations = []
+    bits = path.split(".")
+    for x in range(len(bits)):
+        variation = ".".join(bits[:x])
+        variations.append(variation)
+    return variations
+
+
+def remove_redundant_paths(paths):
+    results = []
+    for path in paths:
+        redundant = False
+        paths_copy = paths[:]
+        paths_copy.pop(paths.index(path))
+        for p in paths_copy:
+            if p.startswith(path) and len(p) > len(path):
+                redundant = True
+        if redundant is False:
+            results.append(path)
+    return results
+
+
 def get_class_name(obj=None):
     # Get name of parent object.
     if obj is None:
@@ -128,9 +151,10 @@ def get_model_field_path(model_name, *args):
         final_args.append(arg)
     parts = final_args
     if len(model_name):
-        if model_name not in parts:
+        if parts[0] != model_name:
             parts = [model_name.lower()] + parts
     full = ".".join(parts)
+    print("full: ", full)
     return full
 
 
