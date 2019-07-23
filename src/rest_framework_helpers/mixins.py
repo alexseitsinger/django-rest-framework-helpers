@@ -24,6 +24,7 @@ from rest_framework.serializers import (
 from .utils import (
     get_class_name,
     get_model_field_path,
+    remove_redundant_paths,
     get_field_bits,
     get_model_path,
     get_mapped_path,
@@ -86,7 +87,7 @@ class ExpandableMixin(object):
     query_param = "expand"
     settings_attr_name = "expand"
     required_attrs = ["model_name"]
-    initialized_attrs = required_attrs + ["target_field_name"]
+    initialized_attrs = required_attrs + ["target_field_names"]
 
     def __init__(self, *args, **kwargs):
         for attr_name in self.initialized_attrs:
@@ -148,7 +149,9 @@ class ExpandableMixin(object):
         Returns a list of field names to expand.
         """
         query_param = self.get_query_param()
-        return query_param.split(",")
+        field_names = query_param.split(",")
+        field_names = remove_redundant_paths(field_names)
+        return field_names
 
     @property
     def has_query_param(self):
@@ -178,20 +181,33 @@ class ExpandableMixin(object):
         """
         Method for converting the object to an expanded representation.
         """
-        field_names = self.get_expanded_field_names()
-        expanded = self.get_expanded_representation(obj, field_names)
+        expanded = self.get_expanded_representation(obj)
         if expanded is None:
             return self.to_default_representation(obj)
         if isinstance(expanded, list):
             return HashableList(expanded)
         return HashableDict(expanded)
 
-    def get_expanded_object(
+    def get_expanded_object(self, obj, matched_field_names=None, parent=None):
+        expanded = None
+        for matched_field_name in matched_field_names:
+            result, field_name = self.get_expanded_object_field(
+                obj, matched_field_name, parent
+            )
+            if expanded is None:
+                expanded = result
+            else:
+                expanded[field_name] = expanded[field_name]
+        return expanded
+
+    def get_expanded_object_field(
         self, obj, field_name=None, parent=None, field_options=None, expand_options=None
     ):
         """
         Returns the expanded object with its specified fields expanded as well.
         """
+        prefix = None
+        suffix = None
         opts = [field_options, expand_options]
 
         if field_name is None:
@@ -200,12 +216,8 @@ class ExpandableMixin(object):
                     "The expand and field options must be provided when no field name is provided."
                 )
 
-        prefix = None
-        suffix = None
-
         if field_name is not None:
             prefix, suffix = field_name.rsplit(".", 1)
-
             if all([x is None for x in opts]):
                 attr = getattr(obj, suffix, None)
                 if attr is not None and isinstance(attr, Manager):
@@ -223,7 +235,7 @@ class ExpandableMixin(object):
             fopts = self.get_field_options(nested_path, parent=obj)
             field = exopts["field"]
             if field != obj and has_circular_reference(field) is False:
-                nested_obj = self.get_expanded_object(
+                nested_obj, field_name = self.get_expanded_object_field(
                     field,
                     field_name=nested_path,
                     parent=obj,
@@ -231,18 +243,30 @@ class ExpandableMixin(object):
                     expand_options=exopts,
                 )
                 expanded[suffix] = nested_obj
-        return expanded
+        return (expanded, suffix)
 
-    def get_expanded_representation(self, obj, field_names, parent=None):
+    def get_expanded_representation(self, obj, parent=None):
         """
         Returns the expanded object if the field names provided match those specified in
         settings.
         """
+        field_names = self.get_expanded_field_names()
+        full_target_field_names = [
+            get_model_field_path(self.model_name, x) for x in self.target_field_names
+        ]
+        matched_field_names = []
         for field_name in field_names:
-            full_name = get_model_field_path(self.model_name, field_name)
-            for item in self.settings:
-                if full_name in item.get("fields", []):
-                    return self.get_expanded_object(obj, full_name, parent=parent)
+            if not field_name.startswith(self.model_name):
+                full_expanded_field_name = get_model_field_path(
+                    self.model_name, field_name
+                )
+            else:
+                full_expanded_field_name = field_name
+            if full_expanded_field_name in full_target_field_names:
+                for item in self.settings:
+                    if full_expanded_field_name in item.get("fields", []):
+                        matched_field_names.append(full_expanded_field_name)
+        return self.get_expanded_object(obj, matched_field_names, parent=parent)
 
     def expand_object(self, obj, field_options, expand_options):
         """
