@@ -1,3 +1,17 @@
+<a name="v5.3.0"></a>
+## [v5.3.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.2.1...v5.3.0) (2019-07-23)
+
+### Bug Fixes
+- Correctly expands multiple fields. ([7bcdc04](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/7bcdc04873226aeb687f98e3c45e046472af13f0))
+
+### Code Refactoring
+- Removes default suffix from APIRootView. ([01498cb](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/01498cbf009bd8ff1c6b22d5356d31eb5a071100))
+- Removes unnecessary print statement. ([8e82b35](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8e82b353327a337773098acda25395ccc52cf1ba))
+
+### Features
+- Adds util for removing redundant paths. ([8bed2da](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8bed2da2134fa773d52ac5eec1c8cefb0b3a7534))
+
+
 <a name="v5.2.1"></a>
 ## [v5.2.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.2.0...v5.2.1) (2019-07-22)
 
