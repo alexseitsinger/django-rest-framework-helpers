@@ -1,9 +1,5 @@
-import base64
 import six
-import uuid
 import pytz
-import imghdr
-from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from rest_framework.serializers import (
     Field,
@@ -17,31 +13,17 @@ from rest_framework.serializers import (
 )
 
 
-from .mixins import ParameterisedFieldMixin, ExpandableMixin
+from .mixins import ParameterisedFieldMixin, ExpandableRelatedFieldMixin
 
 
-class ExpandableHyperlinkedRelatedField(ExpandableMixin, HyperlinkedRelatedField):
-    """
-    A serializer field that will output its real object when expanded.
-
-    eg:
-        GET http://www.example.com/api/v1/models/1?expand=field_name,field_name
-
-        expandable = [
-            {
-                "fields": ["model.field_name", "model.field_name"],
-                "serializer": "path.to.serializer.class.SerializerClass",
-            },
-        ]
-    """
-
-    def to_representation(self, obj):
-        return self.get_representation(obj)
+class ExpandableHyperlinkedRelatedField(
+    ExpandableRelatedFieldMixin, HyperlinkedRelatedField
+):
+    pass
 
 
-class ExpandableSlugRelatedField(ExpandableMixin, SlugRelatedField):
-    def to_representation(self, obj):
-        return self.get_representation(obj)
+class ExpandableSlugRelatedField(ExpandableRelatedFieldMixin, SlugRelatedField):
+    pass
 
 
 class LoadableImageField(ImageField):
