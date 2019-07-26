@@ -1,3 +1,14 @@
+<a name="v6.0.0"></a>
+## [v6.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.3.0...v6.0.0) (2019-07-26)
+
+### Bug Fixes
+- Replaces renamed ExpandableRelatedField. ([6a57448](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/6a5744811d14c2667c6623f8889db9e1f598a669))
+
+### Features
+- Adds & updates mixins. ([c2187a7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c2187a7c60ef7f2f4a9ccbcf5dcddb263ad995db))
+- Adds & updates various util methods. ([40edc1f](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/40edc1f89d9d11753731928fabe05d62d83b1468))
+
+
 <a name="v5.3.0"></a>
 ## [v5.3.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.2.1...v5.3.0) (2019-07-23)
 
