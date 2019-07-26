@@ -7,6 +7,7 @@ from django.db.models.fields.related import (
     OneToOneField,
 )
 from django.db.models import Manager
+from django.db.models.query import QuerySet
 from collections import OrderedDict
 
 REVERSE_RELS = (ManyToOneRel, OneToOneRel, ForeignObjectRel)
@@ -20,6 +21,66 @@ ACTION_MAPS = {
         "delete": "destroy",
     },
 }
+
+
+def get_real_path(obj, field_name):
+    bits = field_name.split(".")
+    remove = ""
+    result = ""
+    for i in range(len(bits) + 1):
+        path = ".".join(bits[:i])
+        if is_model_field(obj, path) is True:
+            result = path
+        elif not len(result):
+            remove = path
+        else:
+            break
+    prefix = "{}".format(remove)
+    final = result.replace(prefix, "")
+    if final.startswith("."):
+        final = final[1:]
+    return final
+
+
+def get_real_field_path(obj, field_name):
+    bits = field_name.split(".")
+    model_name = bits.pop(0)
+    non_field_name = bits.pop(-1)
+    mid_path = ".".join(bits)
+    field_name = mid_path.split(".", 1)[0]
+    if get_class_name(obj).lower() == model_name:
+        full_path = ".".join([model_name, mid_path])
+    else:
+        full_path = ".".join([mid_path])
+    if full_path.startswith("."):
+        full_path = full_path[1:]
+    if full_path.endswith("."):
+        full_path = full_path[:-1]
+    return (full_path, field_name, non_field_name)
+
+
+def assert_no_none(items, message):
+    if any([x is None for x in items]):
+        raise AssertionError(message)
+
+
+def is_model_field(obj, field_name):
+    try:
+        obj = obj.model
+    except AttributeError:
+        pass
+    if isinstance(obj, QuerySet):
+        obj = obj.first()
+    try:
+        meta = obj._meta
+        fields = meta.get_fields()
+        names = [x.attname for x in fields]
+        fk_name = "{}_id".format(field_name)
+        if field_name in names or fk_name in names:
+            return True
+        return False
+    except AttributeError:
+        return False
 
 
 def is_rel(obj):
@@ -73,11 +134,18 @@ def get_rels(obj):
 
 def has_circular_reference(obj):
     result = False
-    for rel in get_rels(obj):
-        if result is True:
-            continue
-        mp = get_model_path(rel)
-        result = has_ancestor(obj, mp)
+
+    if isinstance(obj, QuerySet):
+        for o in obj.all():
+            if result is True:
+                break
+            result = has_circular_reference(o)
+    else:
+        for rel in get_rels(obj):
+            if result is True:
+                break
+            mp = get_model_path(rel)
+            result = has_ancestor(obj, mp)
     return result
 
 
@@ -137,10 +205,7 @@ def get_class_name(obj=None):
 
 def get_model_field_path(model_name, *args):
     final_args = []
-    if model_name.startswith("."):
-        model_name = model_name[1:]
-    if model_name.endswith("."):
-        model_name = model_name[:-1]
+    model_name = normalize_field_path(model_name)
     for arg in list(args):
         if arg is None:
             continue
@@ -154,33 +219,149 @@ def get_model_field_path(model_name, *args):
         if parts[0] != model_name:
             parts = [model_name.lower()] + parts
     full = ".".join(parts)
+    full = normalize_field_path(full)
     return full
 
 
-def get_field_bits(obj, field_path=None):
+def get_nested(obj, path):
+    attr = obj
+    attr_last = obj
+
+    parent_path_bits = []
+    child_path_bits = []
+    ignored_path_bits = []
+    field_name = None
+
+    for bit in path.split("."):
+        attr_last = attr
+        attr = getattr(attr, bit, None)
+
+        if attr is not None:
+            parent_path_bits.append(bit)
+            field_name = bit
+        else:
+            attr = attr_last
+            if len(parent_path_bits):
+                child_path_bits.append(bit)
+            else:
+                ignored_path_bits.append(bit)
+
+    if isinstance(attr, Manager):
+        attr = attr.all()
+
+    suffix = ".".join(parent_path_bits)
+    parent_path = path.replace(".{}".format(suffix), "")
+    parent_path = normalize_field_path(parent_path)
+
+    child_path = ".".join(child_path_bits)
+    child_path = normalize_field_path(child_path)
+
+    return (obj, parent_path, attr, child_path, field_name)
+
+
+def deep_update(obj, path, value):
+    dest = obj
+    bits = path.split(".")
+    last = bits.pop(-1)
+    for bit in bits:
+        if bit in dest:
+            dest = dest[bit]
+        else:
+            dest = dest[bit] = OrderedDict()
+    dest[last] = value
+    return dest
+
+
+def get_path_options(obj, field_path=None):
     if field_path is None:
         field_path = ""
-    attr = obj
-    last_attr = obj
-    bits = field_path.split(".")
-    mapping = OrderedDict()
-    valid = []
-    skipped = []
-    ignored = []
-    for bit in bits:
-        last_attr = attr
-        attr = getattr(attr, bit, None)
-        if attr is not None:
-            mapping[bit] = True
-            valid.append(bit)
-        else:
-            attr = last_attr
-            mapping[bit] = False
-            if not len(valid):
-                ignored.append(bit)
+
+    source_bits = field_path.split(".")
+
+    if isinstance(obj, (Manager, QuerySet)):
+        source = obj = obj.all()
+    else:
+        source = obj
+    source_last = source
+
+    try:
+        root_model_name = source_bits.pop(0)
+    except IndexError:
+        root_model_name = ""
+
+    try:
+        current_model_name = source_bits.pop(0)
+    except IndexError:
+        current_model_name = ""
+
+    ignored_bits = []
+    child_bits = []
+    host_field_bits = []
+    host_field_name = ""
+    child = None
+
+    for bit in source_bits:
+        print("bit: ", bit)
+        source_last = source
+        source = getattr(source, bit, None)
+
+        if isinstance(source, (QuerySet, Manager)):
+            source = source.all()
+
+        if source is None:
+            source = source_last
+
+            if len(host_field_bits):
+                child_bits.append(bit)
             else:
-                skipped.append(bit)
-    return (attr, valid, skipped, ignored, mapping)
+                ignored_bits.append(bit)
+        else:
+            host_field_name = bit
+
+            _is_rel = is_rel(source)
+            _is_rev = is_reverse_rel(source)
+            _is_qs = isinstance(source, (Manager, QuerySet))
+
+            if _is_rel or _is_rev or _is_qs:
+                child = source
+                source = source_last
+                break
+            else:
+                host_field_bits.append(bit)
+
+    if isinstance(source, (QuerySet, Manager)):
+        source = source.all()
+
+    host_field_path = ".".join([root_model_name, current_model_name] + host_field_bits)
+    _, suffix = host_field_path.rsplit(".", 1)
+
+    if is_model_field(child, suffix):
+        if suffix == host_field_name:
+            child_path = ".".join([suffix])
+        else:
+            child_path = ".".join([suffix, host_field_name])
+    else:
+        child_path = ""
+
+    child_path = normalize_field_path(child_path)
+
+    ret = {
+        "source": source,
+        "host_field_name": host_field_name,
+        "host_field_path": host_field_path,
+        "child_path": child_path,
+    }
+    print(ret)
+
+    return ret
+
+
+def normalize_field_path(field_path):
+    if field_path.startswith("."):
+        field_path = field_path[1:]
+    if field_path.endswith("."):
+        field_path = field_path[:-1]
+    return field_path
 
 
 def get_mapped_path(od):
@@ -195,11 +376,25 @@ def get_mapped_path(od):
 
 def get_nested_attr(obj, bits):
     attr = obj
+    last = obj
+    done = False
+    used = []
+    rem = []
     if isinstance(bits, str):
         bits = bits.split(".")
-    for bit in bits:
-        attr = getattr(attr, bit)
-    return attr
+    while len(bits):
+        if done is True:
+            break
+        bit = bits.pop(0)
+        last = attr
+        attr = getattr(attr, bit, None)
+        if attr is not None:
+            used.append(bit)
+        else:
+            attr = last
+            rem.append(bit)
+    ret = (attr, used, rem)
+    return ret
 
 
 class HashableList(list):
