@@ -1,3 +1,13 @@
+<a name="v6.0.1"></a>
+## [v6.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v6.0.0...v6.0.1) (2019-07-30)
+
+### Bug Fixes
+- Gets nested object expanding working. ([2ddfbe9](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/2ddfbe9ea0bc9930b8d63e7b52a094063d9fe93b))
+
+### Features
+- Adds utils for expanding. ([987bb5b](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/987bb5b2b151a851e970fdc78fb9cfdd8ce85f0a))
+
+
 <a name="v6.0.0"></a>
 ## [v6.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v5.3.0...v6.0.0) (2019-07-26)
 
