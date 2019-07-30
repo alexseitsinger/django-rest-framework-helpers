@@ -223,50 +223,163 @@ def get_model_field_path(model_name, *args):
     return full
 
 
-def get_nested(obj, path):
-    attr = obj
-    attr_last = obj
+def get_object(obj):
+    if isinstance(obj, Manager):
+        obj = obj.all()
+    if isinstance(obj, QuerySet):
+        obj = obj.first()
+    return obj
 
-    parent_path_bits = []
-    child_path_bits = []
-    ignored_path_bits = []
-    field_name = None
 
-    for bit in path.split("."):
-        attr_last = attr
-        attr = getattr(attr, bit, None)
+def has_field(obj, path):
+    model = get_object(obj)
+    prefix, suffix = path.rsplit(".", 1)
+    fields = model._meta.get_fields()
+    field_names = [x.attname for x in fields]
+    print(field_names)
+    if suffix in field_names:
+        return True
+    return False
 
-        if attr is not None:
-            parent_path_bits.append(bit)
-            field_name = bit
+
+def get_field(model, field_name):
+    fields = model._meta.get_fields()
+    for field in fields:
+        attname = getattr(field, "attname", None)
+        if attname == field_name:
+            return field
+
+
+def is_relation(model, field_name):
+    field = get_field(model, field_name)
+    if isinstance(field, RELS):
+        return True
+    return False
+
+
+def get_nested_field_path(target, path):
+    print("----------")
+    print("target: ", get_class_name(target).lower())
+    print("path: ", path)
+    bits = path.split(".")
+    host_model_name = bits.pop(0)
+
+    prefix_path_bits = [host_model_name]
+    suffix_path_bits = []
+
+    for bit in bits:
+        print("bit: ", bit)
+
+        if hasattr(target, bit):
+            suffix_path_bits.append(bit)
+            target = getattr(target, bit)
+            continue
+
+        prefix_path_bits.append(bit)
+
+    prefix_path = ".".join(prefix_path_bits)
+    prefix_field_name = prefix_path_bits[-1]
+    suffix_path = ".".join(suffix_path_bits)
+    try:
+        suffix_field_name = suffix_path_bits[-1]
+    except IndexError:
+        suffix_field_name = ""
+    return (prefix_field_name, prefix_path, suffix_field_name, suffix_path)
+
+
+class DictDiffer(object):
+    """
+    Calculate the difference between two dictionaries as:
+    (1) items added
+    (2) items removed
+    (3) keys same in both but changed values
+    (4) keys same in both and unchanged values
+    """
+
+    def __init__(self, current_dict, past_dict):
+        self.current_dict, self.past_dict = current_dict, past_dict
+        self.current_keys, self.past_keys = (
+            set(current_dict.keys()),
+            set(past_dict.keys()),
+        )
+        self.intersect = self.current_keys.intersection(self.past_keys)
+
+    def added(self):
+        """ Find keys that have been added """
+        return self.current_keys - self.intersect
+
+    def removed(self):
+        """ Find keys that have been removed """
+        return self.past_keys - self.intersect
+
+    def changed(self):
+        """ Find keys that have been changed """
+        return set(
+            o for o in self.intersect if self.past_dict[o] != self.current_dict[o]
+        )
+
+    def unchanged(self):
+        """ Find keys that are unchanged """
+        return set(
+            o for o in self.intersect if self.past_dict[o] == self.current_dict[o]
+        )
+
+    def new_or_changed(self):
+        """ Find keys that are new or changed """
+        # return set(k for k, v in self.current_dict.items()
+        #           if k not in self.past_keys or v != self.past_dict[k])
+        return self.added().union(self.changed())
+
+
+# obj is always the fields contents
+
+
+def get_field_path(obj, path):
+    print("----------- get_field_path ----------")
+    print("path: ", path)
+    target = get_object(obj)
+    print("target: ", get_class_name(target).lower())
+    try:
+        base_path, target_field_name = path.rsplit(".", 1)
+        print("base_path: ", base_path)
+        print("target_field_name: ", target_field_name)
+        if hasattr(target, target_field_name):
+            print("doing initial")
+            target_name = get_class_name(target).lower()
+            print("{} has field {}".format(target_name, target_field_name))
+            try:
+                parent_path, parent_field_name = base_path.rsplit(".", 1)
+                print("parent_path: ", parent_path)
+                print("parent_field_name: ", parent_field_name)
+
+                if parent_field_name.endswith("_set"):
+                    parent_field_model_name = parent_field_name.replace("_set", "")
+                    suffix = ".".join([parent_field_model_name, target_field_name])
+                else:
+                    suffix = ".".join([parent_field_name, target_field_name])
+
+                print("suffix: ", suffix)
+                ret = (parent_field_name, base_path, target_field_name, suffix)
+            except ValueError:
+                ret = (target_field_name, path, "", "")
         else:
-            attr = attr_last
-            if len(parent_path_bits):
-                child_path_bits.append(bit)
-            else:
-                ignored_path_bits.append(bit)
-
-    if isinstance(attr, Manager):
-        attr = attr.all()
-
-    suffix = ".".join(parent_path_bits)
-    parent_path = path.replace(".{}".format(suffix), "")
-    parent_path = normalize_field_path(parent_path)
-
-    child_path = ".".join(child_path_bits)
-    child_path = normalize_field_path(child_path)
-
-    return (obj, parent_path, attr, child_path, field_name)
+            print("doing nested")
+            ret = get_nested_field_path(target, path)
+    except ValueError:
+        print("doing exception nested")
+        ret = get_nested_field_path(target, path)
+    print("ret: ", ret)
+    return ret
 
 
 def deep_update(obj, path, value):
-    dest = obj
+    dest = obj.copy()
     bits = path.split(".")
     last = bits.pop(-1)
     for bit in bits:
-        if bit in dest:
+        try:
             dest = dest[bit]
-        else:
+        except KeyError:
             dest = dest[bit] = OrderedDict()
     dest[last] = value
     return dest
