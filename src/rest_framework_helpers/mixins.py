@@ -43,7 +43,9 @@ from .utils import (
     has_ancestor,
     HashableList,
     HashableDict,
-    get_nested,
+    # get_nested,
+    get_field_path,
+    DictDiffer,
 )
 
 
@@ -172,6 +174,8 @@ class ExpandableMixin(object):
             result = remove_redundant_paths(result)
             # if model_name in result:
             #    result.pop(result.index(model_name))
+            result = [x for x in result if len(x)]
+            # print("    --> params: ", result)
             return result
 
     @property
@@ -188,11 +192,14 @@ class ExpandableMixin(object):
             self.model_name = model_name
         return model_name
 
-    def get_field_path(self, path):
+    def get_field_paths(self, path):
         model_name = self.get_model_name()
+        model_set_name = "{}_set".format(model_name)
         if not path.startswith(model_name):
-            path = get_model_field_path(model_name, path)
-        return path
+            path_a = get_model_field_path(model_name, path)
+            path_b = get_model_field_path(model_set_name, path)
+            return [path_a, path_b]
+        return [path]
 
     def is_requested(self, path):
         if path in self.requested_fields:
@@ -203,52 +210,82 @@ class ExpandableMixin(object):
     def requested_fields(self):
         result = []
         for path in self.params:
-            result.append(self.get_field_path(path))
+            paths = self.get_field_paths(path)
+            for x in paths:
+                result.append(x)
+        # print("    --> requested_fields: ", result)
         return result
 
 
 class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         model_name = self.get_model_name()
-        for name, field in self.expandable_fields:
+        # print("----------")
+        # print("--> model_name: ", model_name)
+        for field_name, field in self.expandable_fields:
             field.model_name = model_name
-            field.allowed = list(set([name] + getattr(field, "allowed", [])))
+            field.allowed = list(set([field_name] + getattr(field, "allowed", [])))
+            # print("  --> field_name: ", field_name)
+            # print("  --> allowed: ", field.allowed)
 
     @property
     def expandable_fields(self):
         fields = []
-        for name, field in self.fields.items():
-            if isinstance(field, ManyRelatedField):
-                field = field.child_relation
-            if isinstance(field, ExpandableMixin):
-                fields.append((name, field))
-        return fields
 
-    def is_expandable(self, field):
-        if isinstance(field, ManyRelatedField):
-            field = field.child_relation
-        for name, related in self.expandable_fields:
-            if related == field:
-                return True
-        return False
-
-    def to_representation_for_field(self, field, obj):
-        if isinstance(obj, Manager):
-            obj = obj.all()
-
-        if self.is_expandable(field):
+        for field_name, field in self.fields.items():
             target = (
                 field.child_relation if isinstance(field, ManyRelatedField) else field
             )
 
-            for requested in self.requested_fields:
-                is_allowed = target.is_allowed(requested)
-                is_path = target.is_path(requested)
+            if isinstance(target, ExpandableRelatedFieldMixin):
+                fields.append([field_name, target])
+
+        return fields
+
+    def is_expandable(self, field):
+        target = field.child_relation if isinstance(field, ManyRelatedField) else field
+
+        for field_name, field in self.expandable_fields:
+            if field == target:
+                return True
+
+        return False
+
+    def to_representation_for_field(self, field, obj, specified_fields=[]):
+        if isinstance(obj, Manager):
+            obj = obj.all()
+
+        is_expandable = self.is_expandable(field)
+        # model_name = self.get_model_name()
+        # field_name = field.field_name
+
+        # print("    ----------")
+        # print("    --> class: ", get_class_name(self))
+        # print("    --> model_name: ", model_name)
+        # print("    --> field_name: ", field_name)
+        # print("    --> field: ", field)
+        # print("    --> obj: ", obj)
+        # print("    --> is_expandable ({}): {}".format(field.field_name, is_expandable))
+
+        if is_expandable:
+            target = getattr(field, "child_relation", field)
+
+            # print("    --> target: ", target)
+            # print("    --> field.allowed: ", target.allowed)
+
+            matched = []
+            for field_path in self.requested_fields:
+                is_allowed = target.is_allowed(field_path)
+                is_path = target.is_path(field_path)
+                # print("        --> is_allowed ({}): {}".format(field_path, is_allowed))
+                # print("        --> is_path ({}): {}".format(field_path, is_allowed))
 
                 if is_allowed and is_path:
-                    return target.to_expanded_representation(obj, requested)
+                    matched.append(field_path)
+
+            if len(matched):
+                return target.to_expanded_representation(obj, matched)
 
         return field.to_representation(obj)
 
@@ -274,7 +311,9 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         ignored = getattr(self, "ignored", None)
         if ignored is not None:
             for path in ignored:
-                ignored_fields.append(self.get_field_path(path))
+                paths = self.get_field_paths(path)
+                for x in paths:
+                    ignored_fields.append(x)
         return ignored_fields
 
     def is_ignored(self, path):
@@ -294,55 +333,113 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         allowed = getattr(self, "allowed", None)
         if allowed is not None:
             for path in allowed:
-                allowed_fields.append(self.get_field_path(path))
+                paths = self.get_field_paths(path)
+                for x in paths:
+                    allowed_fields.append(x)
+        print(self.class_name)
         return allowed_fields
 
     def is_allowed(self, path):
         result = False
-
         if path in self.allowed_fields:
             result = True
-
         return result
 
     def is_path(self, path):
         result = False
-
         for item in self.settings:
             paths = item.get("paths", [])
-
             if path in paths:
                 result = True
-
         return result
 
     def to_default_representation(self, obj):
         return super().to_representation(obj)
 
-    def to_expanded_representation(self, obj, path):
+    def expand_queryset(self, queryset, path, target_field_name=None):
+        if not isinstance(queryset, QuerySet):
+            raise RuntimeError(
+                "Can only expand querysets with expand_queryset, but got a {}.".format(
+                    type(queryset).lower()
+                )
+            )
+
+        expanded = []
+        for obj in queryset:
+            expanded.append(self.expand_object(obj, path, target_field_name))
+
+        return expanded
+
+    def expand_object(self, obj, path, target_field_name=None):
+        target = obj
+        if target_field_name is not None:
+            target = getattr(target, target_field_name)
+        serializer = self.get_serializer(target, path)
+        representation = serializer.to_representation(target)
+        return representation
+
+    def get_expanded(self, obj, path):
+        prefix_field_name, prefix, suffix_field_name, suffix = get_field_path(obj, path)
+
+        if isinstance(obj, QuerySet):
+            expanded = []
+
+            for o in obj:
+                expanded_item = self.expand_object(o, prefix)
+
+                if len(suffix):
+                    representation = self.get_expanded(o, suffix)
+                    expanded_item[suffix_field_name] = representation
+
+                expanded.append(expanded_item)
+        else:
+            try:
+                if len(suffix):
+                    expanded = self.expand_object(obj, prefix, suffix_field_name)
+                else:
+                    expanded = self.expand_object(obj, prefix, prefix_field_name)
+            except AttributeError:
+                expanded = self.expand_object(obj, prefix)
+
+        return expanded
+
+    def to_expanded_representation(self, obj, paths):
         if isinstance(obj, Manager):
             obj = obj.all()
 
-        parent, parent_path, child, child_path, field_name = get_nested(obj, path)
+        expanded = None
+        if len(paths) > 1:
+            for path in paths:
+                prefix, suffix = path.rsplit(".", 1)
 
-        if parent != child:
-            serializer_parent = self.get_serializer(parent_path, parent)
-            expanded_parent = serializer_parent.to_representation(parent)
+                item = self.get_expanded(obj, path)
 
-            serializer_child = self.get_serializer(path, child)
-            expanded_child = serializer_child.to_representation(child)
+                if expanded is None:
+                    expanded = item
 
-            expanded = expanded_parent
-            expanded[field_name] = expanded_child
+                elif isinstance(expanded, list):
+                    for d1 in expanded:
+                        if isinstance(item, list):
+                            for d2 in item:
+                                if d2["uuid"] == d1["uuid"]:
+                                    diff = DictDiffer(d2, d1)
+                                    changed = diff.changed()
+                                    if suffix in changed:
+                                        d1.update({suffix: d2[suffix]})
+
+                else:
+                    diff = DictDiffer(item, expanded)
+                    changed = diff.changed()
+                    if suffix in changed:
+                        expanded.update({suffix: item[suffix]})
         else:
-            serializer = self.get_serializer(path, obj)
-            expanded = serializer.to_representation(obj)
+            expanded = self.get_expanded(obj, paths[0])
 
         if isinstance(expanded, list):
             return HashableList(expanded)
         return HashableDict(expanded)
 
-    def get_serializer(self, path, source):
+    def get_serializer(self, source, path=None):
         serializer_class = None
         ret = {"skipped_fields": [], "many": False, "context": self.context}
 
@@ -352,15 +449,20 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         if isinstance(source, (ManyRelatedField, QuerySet)):
             ret["many"] = True
 
+        # if path is None:
+        #    path = "root"
+
         for item in self.settings:
             if path in item.get("paths", []):
                 serializer_class = self.get_serializer_class(item["serializer"])
                 ret["skipped_fields"] = self.get_removed_fields(item.get("skipped", []))
                 ret["many"] = item.get("many", ret["many"])
 
-        if ret["many"] is True:
-            if not isinstance(source, (QuerySet)):
-                source = QuerySet(source)
+        if not isinstance(source, QuerySet):
+            ret["many"] = False
+        # if ret["many"] is True:
+        #    if not isinstance(source, (QuerySet)):
+        #        source = QuerySet(source)
 
         if serializer_class is None:
             raise RuntimeError(
@@ -369,6 +471,9 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
                 "    'paths': ['{path}']".format(path=path, class_name=self.class_name)
             )
 
+        # print("---------- get_serializer_class -----------")
+        # print("path: ", path)
+        # print("serializer_class: ", serializer_class.__name__)
         return serializer_class(**ret)
 
     def get_serializer_class(self, serializer_path):
