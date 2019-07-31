@@ -84,17 +84,13 @@ def is_model_field(obj, field_name):
 
 
 def is_rel(obj):
-    name = obj.__class__.__name__
-    names = [x.__class__.__name__ for x in RELS]
-    if name in names:
+    if isinstance(obj, RELS):
         return True
     return False
 
 
 def is_reverse_rel(obj):
-    name = obj.__class__.__name__
-    names = [x.__class__.__name__ for x in REVERSE_RELS]
-    if name in names:
+    if isinstance(obj, REVERSE_RELS):
         return True
     return False
 
@@ -257,36 +253,6 @@ def is_relation(model, field_name):
     return False
 
 
-def get_nested_field_path(target, path):
-    print("----------")
-    print("target: ", get_class_name(target).lower())
-    print("path: ", path)
-    bits = path.split(".")
-    host_model_name = bits.pop(0)
-
-    prefix_path_bits = [host_model_name]
-    suffix_path_bits = []
-
-    for bit in bits:
-        print("bit: ", bit)
-
-        if hasattr(target, bit):
-            suffix_path_bits.append(bit)
-            target = getattr(target, bit)
-            continue
-
-        prefix_path_bits.append(bit)
-
-    prefix_path = ".".join(prefix_path_bits)
-    prefix_field_name = prefix_path_bits[-1]
-    suffix_path = ".".join(suffix_path_bits)
-    try:
-        suffix_field_name = suffix_path_bits[-1]
-    except IndexError:
-        suffix_field_name = ""
-    return (prefix_field_name, prefix_path, suffix_field_name, suffix_path)
-
-
 class DictDiffer(object):
     """
     Calculate the difference between two dictionaries as:
@@ -331,43 +297,130 @@ class DictDiffer(object):
         return self.added().union(self.changed())
 
 
+def get_nested_field_path(target, path):
+    print("---------- get_nested_field_path ----------")
+    target_name = get_class_name(target).lower()
+    print("target: ", target_name)
+    print("path: ", path)
+
+    bits = path.split(".")
+
+    i = 0
+    for bit in bits:
+        if bit.startswith(target_name):
+            i = bits.index(bit)
+            break
+
+    print("bits: ", bits)
+    prefix_bits = bits[: i + 1]
+    suffix_bits = []
+    for bit in bits[i + 1 :]:
+        if hasattr(target, bit):
+            target = getattr(target, bit)
+            suffix_bits.append(bit)
+            continue
+        prefix_bits.append(bit)
+
+    print("prefix_bits: ", prefix_bits)
+    print("suffix_bits: ", suffix_bits)
+    prefix_path = ".".join(prefix_bits)
+    _, prefix_name = prefix_path.rsplit(".", 1)
+    suffix_path = ".".join(suffix_bits)
+    try:
+        _, suffix_name = suffix_path.rsplit(".", 1)
+    except ValueError:
+        suffix_name = ""
+
+    print(prefix_path)
+    print(suffix_path)
+
+    return (prefix_name, prefix_path, suffix_name, suffix_path)
+
+
 # obj is always the fields contents
 
+import re
 
-def get_field_path(obj, path):
-    print("----------- get_field_path ----------")
-    print("path: ", path)
+
+def normalize_path(path):
+    if path.startswith("."):
+        path = path[1:]
+    if path.endswith("."):
+        path = path[:-1]
+    return path
+
+
+def get_path_split(obj, path):
+    attr = obj
+    print(get_class_name(get_object(obj)))
+    bits = path.split(".")
+    valid_bits = None
+    invalid_bits = None
+    for bit in bits:
+        if not hasattr(attr, bit):
+            i = bits.index(bit)
+            valid_bits = bits[:i]
+            invalid_bits = bits[i:]
+            break
+    valid_path = ".".join(valid_bits)
+    invalid_path = ".".join(invalid_bits)
+    return (valid_path, invalid_path)
+
+
+def get_path_parts(obj, path, base_name=None):
+    print("----------- get_path_parts ----------")
     target = get_object(obj)
-    print("target: ", get_class_name(target).lower())
-    try:
-        base_path, target_field_name = path.rsplit(".", 1)
-        print("base_path: ", base_path)
-        print("target_field_name: ", target_field_name)
-        if hasattr(target, target_field_name):
-            print("doing initial")
-            target_name = get_class_name(target).lower()
-            print("{} has field {}".format(target_name, target_field_name))
-            try:
-                parent_path, parent_field_name = base_path.rsplit(".", 1)
-                print("parent_path: ", parent_path)
-                print("parent_field_name: ", parent_field_name)
+    target_name = get_class_name(target).lower()
+    print("target: ", target_name)
 
-                if parent_field_name.endswith("_set"):
-                    parent_field_model_name = parent_field_name.replace("_set", "")
-                    suffix = ".".join([parent_field_model_name, target_field_name])
-                else:
-                    suffix = ".".join([parent_field_name, target_field_name])
+    pattern = re.compile(r"(\w+\.\w+)")
+    parts = [normalize_path(x) for x in pattern.split(path, 1) if len(x)]
+    parts_final = []
+    # prev = ""
 
-                print("suffix: ", suffix)
-                ret = (parent_field_name, base_path, target_field_name, suffix)
-            except ValueError:
-                ret = (target_field_name, path, "", "")
+    pre, suf = get_path_split(obj, path)
+    print(" -> pre: ", pre)
+    print(" -> suf: ", suf)
+
+    for part in parts:
+        print("part: ", part)
+        # try:
+        #    _, field_name = prev.rsplit(".", 1)
+        # except ValueError:
+        #    field_name = prev
+
+        # part_path = normalize_path("{}.{}".format(field_name, part))
+        # part_path_bits = part_path.split(".")
+        # if len(part_path_bits) > 1:
+        #    part_field = part_path.split(".")[1]
+        # else:
+        #    part_field = part_path
+        try:
+            part_field = part.split(".")[1]
+        except IndexError:
+            part_field = part
+        parts_final.append([part_field, part])
+        # prev = part
+
+    print("parts_final: ", parts_final)
+    print("base_name: ", base_name)
+
+    if base_name is not None:
+        # starts = "{}.".format(base_name)
+        if len(parts_final) > 1:
+            if not parts_final[1][1].startswith(base_name):
+                part_path = parts_final[1][1]
+                parts_final[1][1] = "{}.{}".format(base_name, part_path)
         else:
-            print("doing nested")
-            ret = get_nested_field_path(target, path)
-    except ValueError:
-        print("doing exception nested")
-        ret = get_nested_field_path(target, path)
+            if not parts_final[0][1].startswith(base_name):
+                part_path = parts_final[0][1]
+                parts_final[0][1] = "{}.{}".format(base_name, part_path)
+
+    ret = (parts_final[0][0], parts_final[0][1])
+    if len(parts_final) > 1:
+        ret += (parts_final[1][0], parts_final[1][1])
+    else:
+        ret += ("", "")
     print("ret: ", ret)
     return ret
 
