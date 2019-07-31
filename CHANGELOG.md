@@ -1,3 +1,14 @@
+<a name="v7.0.0"></a>
+## [v7.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v6.0.1...v7.0.0) (2019-07-31)
+
+### Code Refactoring
+- Moves expandable modules. ([731a6ab](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/731a6ab8f4c30785318323748db6d60ad6898823))
+- Movex expandable to own sub-package. ([fe48d41](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/fe48d41a027072631ec9030b211746d0a4039af0))
+
+### Features
+- Adds more util modules. ([c756a28](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/c756a286164aab9cd3b3c975e8e89c09fcb7f6a8))
+
+
 <a name="v6.0.1"></a>
 ## [v6.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v6.0.0...v6.0.1) (2019-07-30)
 
