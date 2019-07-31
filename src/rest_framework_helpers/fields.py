@@ -12,18 +12,7 @@ from rest_framework.serializers import (
     ListSerializer,
 )
 
-
-from .mixins import ParameterisedFieldMixin, ExpandableRelatedFieldMixin
-
-
-class ExpandableHyperlinkedRelatedField(
-    ExpandableRelatedFieldMixin, HyperlinkedRelatedField
-):
-    pass
-
-
-class ExpandableSlugRelatedField(ExpandableRelatedFieldMixin, SlugRelatedField):
-    pass
+from .mixins import ParameterisedFieldMixin
 
 
 class LoadableImageField(ImageField):
