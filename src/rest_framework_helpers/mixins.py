@@ -48,18 +48,22 @@ class RepresentationMixin(object):
     def to_representation(self, instance, *args, **kwargs):
         ret = OrderedDict()
         fields = self._readable_fields
+
         for field in fields:
             try:
                 obj = field.get_attribute(instance)
             except SkipField:
                 continue
+
             check_for_none = obj.pk if isinstance(obj, PKOnlyObject) else obj
             if check_for_none is None:
-                ret[field.field_name] = None
+                representation = None
             else:
-                ret[field.field_name] = self.to_representation_for_field(
+                representation = self.to_representation_for_field(
                     field, obj, *args, **kwargs
                 )
+
+            ret[field.field_name] = representation
         return ret
 
     def to_representation_for_field(self, field, obj, *args, **kwargs):
