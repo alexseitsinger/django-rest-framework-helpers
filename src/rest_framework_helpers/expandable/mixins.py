@@ -266,7 +266,7 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
             return True
         return False
 
-    def assert_is_allowed(self, field_path):
+    def assert_is_allowed(self, path):
         """
         Raises an AssertionError if the field path specified is not in the list of
         allowed field paths.
@@ -274,12 +274,15 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         model_serializer_name = get_class_name(self.model_serializer)
         model_serializer_field_name = self.model_serializer_field_name
         related_field_class_name = get_class_name(self)
-        if self.is_allowed(field_path) is False:
+        if self.is_allowed(path) is False:
+
+            path = ".".join(path.split(".")[1:])
+
             raise AssertionError(
                 "The path '{}' is not listed as an allowed field path on {}'s {} "
                 "field. Please add the path to 'allowed' kwarg on {}'s '{}' field "
                 "to allow its expansion.".format(
-                    field_path,
+                    path,
                     model_serializer_name,
                     model_serializer_field_name,
                     model_serializer_name,
@@ -344,16 +347,16 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         specified, the serializer will use that nested object to generate a
         representation.
         """
-        print("field_name: ", field_name)
-        # name = get_class_name(obj).lower()
-
+        target = obj
         if field_name is not None:
-            # if name != field_name:
-            if hasattr(obj, field_name):
-                obj = getattr(obj, field_name)
+            if hasattr(target, field_name):
+                target = getattr(target, field_name)
 
-        serializer = self.get_serializer(obj, path)
-        representation = serializer.to_representation(obj)
+        if not target:
+            return None
+
+        serializer = self.get_serializer(target, path)
+        representation = serializer.to_representation(target)
 
         return representation
 
