@@ -354,8 +354,8 @@ def get_path_split(obj, path):
     attr = obj
     print(get_class_name(get_object(obj)))
     bits = path.split(".")
-    valid_bits = None
-    invalid_bits = None
+    valid_bits = []
+    invalid_bits = []
     for bit in bits:
         if not hasattr(attr, bit):
             i = bits.index(bit)
