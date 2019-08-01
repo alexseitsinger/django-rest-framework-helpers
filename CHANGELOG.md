@@ -1,3 +1,14 @@
+<a name="v7.0.1"></a>
+## [v7.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.0...v7.0.1) (2019-08-01)
+
+### Bug Fixes
+- None to [] to prevent exception. ([ae05126](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/ae05126ac5843a8dd767f31cf717200fcf6c64e4))
+- Returns None if object is empty. ([8b2d2f7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8b2d2f757f6772b54f464d5f659da50d29e49366))
+
+### Code Refactoring
+- Uses local var instead of direct asign. ([ae72998](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/ae729987cff2cb6c3b703f3582320d02c9c7fdcf))
+
+
 <a name="v7.0.0"></a>
 ## [v7.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v6.0.1...v7.0.0) (2019-07-31)
 
