@@ -1,3 +1,10 @@
+<a name="v7.0.2"></a>
+## [v7.0.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.1...v7.0.2) (2019-08-02)
+
+### Bug Fixes
+- Fixes expanding for nested objs. ([f6a7439](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/f6a743929d524573dd0a932ac059900283fe10f6))
+
+
 <a name="v7.0.1"></a>
 ## [v7.0.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.0...v7.0.1) (2019-08-01)
 
