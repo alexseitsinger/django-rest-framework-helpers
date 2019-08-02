@@ -16,6 +16,9 @@ from ..utils import (
 from ..mixins import RepresentationMixin
 
 
+# TODO: Add an assertion for field names existing on the model.
+
+
 class ExpandableMixin(object):
     model_name = None
     query_param = "expand"
@@ -77,22 +80,22 @@ class ExpandableMixin(object):
             self.model_name = model_name
         return model_name
 
-    def get_path_parts(self, path):
+    def get_field_path(self, path):
         """
         Returns a list of possible field paths that are prefixed with the current
         serializers model name, plus one suffixed with _set for django's default
         reverse relationship names.
         """
         model_name = self.get_model_name()
-        if not path.startswith(model_name):
+        prefix = "{}.".format(model_name)
+        if not path.startswith(prefix):
             return get_model_field_path(model_name, path)
         return path
 
     def is_requested(self, field_name):
-        field_path = self.get_path_parts(field_name)
-        for requested_field in self.requested_fields:
-            if requested_field == field_path:
-                return True
+        field_path = self.get_field_path(field_name)
+        if field_path in self.requested_field:
+            return True
         return False
 
     @property
@@ -101,7 +104,7 @@ class ExpandableMixin(object):
         Returns a list of field paths that are requested via the query param. These
         are used to specify the fields to expand.
         """
-        return [self.get_path_parts(x) for x in self.params]
+        return [self.get_field_path(x) for x in self.params]
 
 
 class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
@@ -113,6 +116,7 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
             field.model_serializer = self
             field.model_serializer_field_name = field_name
             field.model_name = model_name
+            field.allowed_prefix = "{}.{}".format(model_name, field_name)
             field.allowed = list(set([field_name] + getattr(field, "allowed", [])))
 
     @property
@@ -151,14 +155,6 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
             if target.is_matching(requested_field):
                 target.assert_is_allowed(requested_field)
                 target.assert_is_specified(requested_field)
-                print("  -> requested_field: ", requested_field)
-                print("  -> field: ", target)
-                # is_allowed = target.is_allowed(requested_field)
-                # is_specified = target.is_specified(requested_field)
-                # print("  -> allowed ({}): {}".format(requested_field, is_allowed))
-                # print("  -> specified ({}): {}".format(requested_field, is_specified))
-
-                # if is_allowed and is_specified:
                 matched.append(requested_field)
 
         return matched
@@ -171,10 +167,6 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
         By default, if the field is an expandable field, it will check if it should be
         expanded, and do so if checks pass.
         """
-        print("---------- to_representation_for_field ----------")
-        print("class: ", self.class_name)
-        print("field: ", field.field_name)
-
         if isinstance(obj, Manager):
             obj = obj.all()
 
@@ -218,7 +210,7 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
 
         if ignored is not None:
             for path in ignored:
-                ignored_paths.append(self.get_path_parts(path))
+                ignored_paths.append(self.get_field_path(path))
 
         return ignored_paths
 
@@ -254,7 +246,7 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         allowed = getattr(self, "allowed", None)
         if allowed is not None:
             for path in allowed:
-                allowed_paths.append(self.get_path_parts(path))
+                allowed_paths.append(self.get_field_path(path))
         return allowed_paths
 
     def is_allowed(self, path):
@@ -262,6 +254,8 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         Returns True/False if the specified path is one of the allowed field paths. Used
         by to_representation_for_field to determine if the field is to be expanded.
         """
+        if path.startswith(self.allowed_prefix):
+            return True
         if path in self.allowed_paths:
             return True
         return False
@@ -299,23 +293,19 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
             # if field_path.startswith(self.model_name):
             #    field_path.replace("{}.".format(self.model_name), "")
             msg = []
-            indent = "\n        "
+            indent = "\n"
             for d in self.settings.get("serializers", []):
                 msg.append(
                     "{}{}{}".format(d["serializer"], indent, indent.join(d["paths"]))
                 )
 
             raise AssertionError(
-                "The path '{}' is not listed in the 'expand' attribute on the {} "
-                "class used for {} on {}. Please add an entry to the expandable "
-                "related field class with the correct serializer to use for the path to "
-                "make it expandable.\n\nCurrently specified on {}:\n    {}".format(
-                    path,
-                    self.class_name,
-                    self.model_serializer_field_name,
-                    get_class_name(self.model_serializer),
-                    self.class_name,
-                    "\n    ".join(msg),
+                "The field path '{field_path}' is not specified in '{attr_name}' on "
+                "{related_field_class_name}.\n\nCurrently Specified:\n{specified}".format(
+                    field_path=path,
+                    attr_name=self.settings_attr,
+                    related_field_class_name=self.class_name,
+                    specified="\n".join(msg),
                 )
             )
 
@@ -330,8 +320,9 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         return False
 
     def is_matching(self, requested_path):
-        field_path_base = self.get_path_parts(self.model_serializer_field_name)
-        if requested_path.startswith(field_path_base):
+        base_path = self.get_field_path(self.model_serializer_field_name)
+        is_starting = requested_path.startswith(base_path)
+        if is_starting:
             return True
         return False
 
@@ -341,112 +332,68 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         """
         return super().to_representation(obj)
 
-    def expand_object(self, obj, path, field_name=None):
+    def expand_object(self, obj, path):
         """
         Method for expanding a model instance object. If a target field name is
         specified, the serializer will use that nested object to generate a
         representation.
         """
-        target = obj
-        if field_name is not None:
-            if hasattr(target, field_name):
-                target = getattr(target, field_name)
-
-        if not target:
-            return None
-
-        serializer = self.get_serializer(target, path)
-        representation = serializer.to_representation(target)
-
+        serializer = self.get_serializer(obj, path)
+        representation = serializer.to_representation(obj)
         return representation
 
-    def get_alias(self, path):
+    def get_alias(self, prefix_field, prefix_path, suffix_field, suffix_path):
         for d in self.settings.get("aliases", []):
-            if path in d.get("paths", []):
-                base_name = d.get("base_name", None)
-                alias = d.get("alias", "")
-                return base_name, alias
-        return None, path
+            if prefix_path in d.get("paths", []):
+                alias = d.get("alias", {})
+                prefix_field = alias.get("prefix_field", prefix_field)
+                prefix_path = alias.get("prefix_path", prefix_path)
+                suffix_field = alias.get("suffix_field", suffix_field)
+                suffix_path = alias.get("suffix_path", suffix_path)
+        return (prefix_field, prefix_path, suffix_field, suffix_path)
 
-    def get_expanded(self, obj, path, base_name=None):
+    def expand(self, obj, prefix_field, prefix_path, suffix_field, suffix_path):
+        target = obj
+        target_name = get_class_name(get_object(target)).lower()
+        names = (target_name, "{}_set".format(target_name))
+
+        if len(prefix_field) and prefix_field not in names:
+            target = getattr(target, prefix_field, target)
+
+        expanded = self.expand_object(target, prefix_path)
+
+        if len(suffix_field):
+            expanded[suffix_field] = self.get_expanded(target, suffix_path)
+
+        return expanded
+
+    def get_expanded(self, obj, path):
         """
         Fascade method for expanding objects or querysets into expanded (nested)
         representations.
         """
-        print("---------- get_expanded() ----------")
-
-        print("path: ", path)
-
-        # base_name, path = self.replace_alias(path)
-
-        if base_name is None:
-            # base_name = get_class_name(get_object(obj)).lower()
-            base_name = self.get_model_name()
-
-        print(" -> obj: ", obj)
-        print(" -> path: ", path)
-        print(" -> base name: ", base_name)
-
-        prefix_field, prefix_path, suffix_field, suffix_path = get_path_parts(
-            obj, path, base_name
+        prefix_field, prefix_path, suffix_field, suffix_path = get_path_parts(obj, path)
+        prefix_field, prefix_path, suffix_field, suffix_path = self.get_alias(
+            prefix_field, prefix_path, suffix_field, suffix_path
         )
-        base_name, prefix_path = self.get_alias(prefix_path)
-        base_name, suffix_path = self.get_alias(suffix_path)
-
-        print(" -> prefix_field: ", prefix_field)
-        print(" -> prefix_path: ", prefix_path)
-        print(" -> suffix_field: ", suffix_field)
-        print(" -> suffix_path: ", suffix_path)
-
         if isinstance(obj, QuerySet):
-            print("expand queryset")
-            expanded = []
-
-            for o in obj:
-                print("expand queryset (prefix)")
-                expanded_object = self.expand_object(o, prefix_path, prefix_field)
-
-                if len(suffix_field):
-                    print("expand queryset (suffix)")
-                    expanded_object[suffix_field] = self.get_expanded(
-                        o, suffix_path, base_name
-                    )
-
-                expanded.append(expanded_object)
-        else:
-            # base_name = get_class_name(get_object(obj)).lower()
-
-            print("expand object (prefix)")
-            try:
-                expanded = self.expand_object(obj, prefix_path, prefix_field)
-            except AttributeError:
-                expanded = self.expand_object(obj, prefix_path)
-
-            if len(suffix_field):
-                print("expand object (suffix)")
-                # if suffix_field == "userprofile":
-                #    o = getattr(obj, "userprofile")
-                expanded[suffix_field] = self.get_expanded(obj, suffix_path, base_name)
-
-        # except AttributeError:
-        #     print("expand object (exception)")
-        #     expanded = self.expand_object(obj, prefix_path)
-
-        return expanded
+            return [self.get_expanded(o, path) for o in obj]
+        return self.expand(obj, prefix_field, prefix_path, suffix_field, suffix_path)
 
     def to_expanded_representation(self, obj, paths):
         """
         Entry method for converting an model object instance into a representation by
         expanding the paths specified (if they are allowed and specified).
         """
-        print("---------- to_expanded_representation ----------")
         if isinstance(obj, Manager):
             obj = obj.all()
 
         expanded = None
+
         if len(paths) > 1:
             for path in paths:
                 prefix, suffix = path.rsplit(".", 1)
+                # base_name = prefix.split(".")[0]
 
                 item = self.get_expanded(obj, path)
 
@@ -470,7 +417,9 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
                     if suffix in changed:
                         expanded.update({suffix: item[suffix]})
         else:
-            expanded = self.get_expanded(obj, paths[0])
+            path = paths[0]
+            # base_name = path.split(".")[0]
+            expanded = self.get_expanded(obj, path)
 
         if isinstance(expanded, list):
             return HashableList(expanded)

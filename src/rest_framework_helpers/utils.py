@@ -368,60 +368,21 @@ def get_path_split(obj, path):
 
 
 def get_path_parts(obj, path, base_name=None):
-    print("----------- get_path_parts ----------")
-    target = get_object(obj)
-    target_name = get_class_name(target).lower()
-    print("target: ", target_name)
-
     pattern = re.compile(r"(\w+\.\w+)")
     parts = [normalize_path(x) for x in pattern.split(path, 1) if len(x)]
     parts_final = []
-    # prev = ""
-
-    pre, suf = get_path_split(obj, path)
-    print(" -> pre: ", pre)
-    print(" -> suf: ", suf)
-
     for part in parts:
-        print("part: ", part)
-        # try:
-        #    _, field_name = prev.rsplit(".", 1)
-        # except ValueError:
-        #    field_name = prev
-
-        # part_path = normalize_path("{}.{}".format(field_name, part))
-        # part_path_bits = part_path.split(".")
-        # if len(part_path_bits) > 1:
-        #    part_field = part_path.split(".")[1]
-        # else:
-        #    part_field = part_path
         try:
             part_field = part.split(".")[1]
         except IndexError:
             part_field = part
         parts_final.append([part_field, part])
-        # prev = part
-
-    print("parts_final: ", parts_final)
-    print("base_name: ", base_name)
-
-    if base_name is not None:
-        # starts = "{}.".format(base_name)
-        if len(parts_final) > 1:
-            if not parts_final[1][1].startswith(base_name):
-                part_path = parts_final[1][1]
-                parts_final[1][1] = "{}.{}".format(base_name, part_path)
-        else:
-            if not parts_final[0][1].startswith(base_name):
-                part_path = parts_final[0][1]
-                parts_final[0][1] = "{}.{}".format(base_name, part_path)
 
     ret = (parts_final[0][0], parts_final[0][1])
     if len(parts_final) > 1:
         ret += (parts_final[1][0], parts_final[1][1])
     else:
         ret += ("", "")
-    print("ret: ", ret)
     return ret
 
 
