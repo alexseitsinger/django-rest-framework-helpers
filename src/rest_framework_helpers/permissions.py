@@ -13,22 +13,40 @@ class IsRelated(BasePermission):
 
     def get_field(self, obj):
         if self.target_field is None:
-            return None
+            raise AttributeError("There is no target field specified.")
+
+        # Split the target field name into parts.
         bits = self.target_field.split(".")
+
+        # Iterate over the parts to find the nested field.
         field = obj
         for bit in bits:
-            field = getattr(field, bit, None)
+            if not hasattr(field, bit):
+                raise AttributeError(
+                    "There is no field named {} on {}".format(bit, field)
+                )
+
+            field = getattr(field, bit)
+
+        # Return the field to use.
+        return field
 
     def is_related(self, user, obj):
         # If it's a user object instance, compare it directly.
         if user == obj:
             return True
+
         # Compare the field, otherwise.
         field = self.get_field(obj)
+
+        # If there is no field, return False.
         if field is None:
             return False
+
+        # If the user matches the nested field, return true.
         if user == field or user in field.all():
             return True
+
         # Else, return False
         return False
 
