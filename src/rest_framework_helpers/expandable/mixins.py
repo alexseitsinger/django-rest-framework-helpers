@@ -17,6 +17,8 @@ from ..mixins import RepresentationMixin
 
 
 # TODO: Add an assertion for field names existing on the model.
+# TODO: Detect and fallback to default representation for circular references instead of
+# just removing the field completely on the parent.
 
 
 class ExpandableMixin(object):
@@ -110,12 +112,18 @@ class ExpandableMixin(object):
 class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.initialize_expandable_fields()
+
+    def initialize_expandable_fields(self):
         model_name = self.get_model_name()
 
         for field_name, field in self.expandable_fields:
+            # Add references to the parent model serializer and field name used.
             field.model_serializer = self
             field.model_serializer_field_name = field_name
+            # Set the model name.
             field.model_name = model_name
+            # Set the allowed paths.
             field.allowed_prefix = "{}.{}".format(model_name, field_name)
             field.allowed = list(set([field_name] + getattr(field, "allowed", [])))
 
@@ -148,14 +156,14 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
 
         return False
 
-    def get_matched_paths(self, target):
+    def get_matched_paths(self, expandable_field):
         matched = []
 
-        for requested_field in self.requested_fields:
-            if target.is_matching(requested_field):
-                target.assert_is_allowed(requested_field)
-                target.assert_is_specified(requested_field)
-                matched.append(requested_field)
+        for requested_path in self.requested_fields:
+            if expandable_field.is_matching(requested_path):
+                expandable_field.assert_is_allowed(requested_path)
+                expandable_field.assert_is_specified(requested_path)
+                matched.append(requested_path)
 
         return matched
 
@@ -175,7 +183,6 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
             matched = self.get_matched_paths(target)
             if len(matched):
                 return target.to_expanded_representation(obj, matched)
-
         return field.to_representation(obj)
 
 
@@ -224,17 +231,52 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
 
         return False
 
-    def get_removed_fields(self, skipped_fields=None):
+    def to_non_circular_path(self, path):
+        if self.is_circular(path):
+            try:
+                prefix, field_name = path.rsplit(".", 1)
+                return prefix
+            except ValueError:
+                return path
+        return path
+
+    def is_circular(self, path):
+        try:
+            prefix, field_name = path.rsplit(".", 1)
+        except ValueError:
+            field_name = path
+
+        if field_name in self.circular_field_names:
+            return True
+        return False
+
+    @property
+    def circular_field_names(self):
+        circular_field_names = []
+
+        # Remove circular references to the parent model.
+        parent_model_name = self.model_serializer.get_model_name()
+        parent_set_name = "{}_set".format(parent_model_name)
+        parent_names = (parent_model_name, parent_set_name)
+        for parent_name in parent_names:
+            circular_field_names.append(parent_name)
+
+        return circular_field_names
+
+    def get_skipped_fields(self, skipped=None):
         """
         Returns a list of field paths (ignored and skipped) to pass to the serializer
         class so it doensn't return them in the representation.
         """
-        removed_fields = self.ignored_paths
+        skipped_fields = self.ignored_paths
 
-        if skipped_fields is not None:
-            removed_fields.extend(skipped_fields)
+        for field_name in self.circular_field_names:
+            skipped_fields.append(field_name)
 
-        return list(set(removed_fields))
+        if skipped is not None:
+            skipped_fields.extend(skipped)
+
+        return list(set(skipped_fields))
 
     @property
     def allowed_paths(self):
@@ -338,8 +380,15 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         specified, the serializer will use that nested object to generate a
         representation.
         """
+        # If the field exists, but its an empty object (no entry saved), obj will be
+        # None. So, if we get None as obj, return None instead of trying to serializer
+        # its representation.
+        if obj is None:
+            return None
+
         serializer = self.get_serializer(obj, path)
         representation = serializer.to_representation(obj)
+
         return representation
 
     def get_alias(self, prefix_field, prefix_path, suffix_field, suffix_path):
@@ -353,6 +402,9 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         return (prefix_field, prefix_path, suffix_field, suffix_path)
 
     def expand(self, obj, prefix_field, prefix_path, suffix_field, suffix_path):
+        if isinstance(obj, Manager):
+            obj = obj.all()
+
         target = obj
         target_name = get_class_name(get_object(target)).lower()
         names = (target_name, "{}_set".format(target_name))
@@ -378,6 +430,7 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         )
         if isinstance(obj, QuerySet):
             return [self.get_expanded(o, path) for o in obj]
+
         return self.expand(obj, prefix_field, prefix_path, suffix_field, suffix_path)
 
     def to_expanded_representation(self, obj, paths):
@@ -444,7 +497,7 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         for d in self.settings.get("serializers", []):
             if path in d.get("paths", []):
                 serializer_class = self.get_serializer_class(d["serializer"])
-                ret["skipped_fields"] = self.get_removed_fields(d.get("skipped", []))
+                ret["skipped_fields"] = self.get_skipped_fields(d.get("skipped", []))
                 ret["many"] = d.get("many", ret["many"])
 
         if not isinstance(source, QuerySet):
