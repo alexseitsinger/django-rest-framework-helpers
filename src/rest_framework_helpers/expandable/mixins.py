@@ -2,6 +2,9 @@ from rest_framework.relations import ManyRelatedField
 from django.db.models import Manager
 from django.db.models.query import QuerySet
 from django.utils.module_loading import import_string
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
 
 from ..utils import (
     get_object,
@@ -91,14 +94,8 @@ class ExpandableMixin(object):
         model_name = self.get_model_name()
         prefix = "{}.".format(model_name)
         if not path.startswith(prefix):
-            return get_model_field_path(model_name, path)
+            return "{}{}".format(prefix, path)
         return path
-
-    def is_requested(self, field_name):
-        field_path = self.get_field_path(field_name)
-        if field_path in self.requested_field:
-            return True
-        return False
 
     @property
     def requested_fields(self):
@@ -118,13 +115,10 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
         model_name = self.get_model_name()
 
         for field_name, field in self.expandable_fields:
-            # Add references to the parent model serializer and field name used.
+            field.model_name = model_name
             field.model_serializer = self
             field.model_serializer_field_name = field_name
-            # Set the model name.
-            field.model_name = model_name
-            # Set the allowed paths.
-            field.allowed_prefix = "{}.{}".format(model_name, field_name)
+            field.allowed_prefix = "{}.{}.".format(model_name, field_name)
             field.allowed = list(set([field_name] + getattr(field, "allowed", [])))
 
     @property
@@ -180,9 +174,11 @@ class ExpandableModelSerializerMixin(RepresentationMixin, ExpandableMixin):
 
         if self.is_expandable(field):
             target = getattr(field, "child_relation", field)
+
             matched = self.get_matched_paths(target)
             if len(matched):
                 return target.to_expanded_representation(obj, matched)
+
         return field.to_representation(obj)
 
 
@@ -284,11 +280,8 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         Returns a list of field paths that are permitted to be expanded from this
         expandable class instance.
         """
-        allowed_paths = []
-        allowed = getattr(self, "allowed", None)
-        if allowed is not None:
-            for path in allowed:
-                allowed_paths.append(self.get_field_path(path))
+        allowed = getattr(self, "allowed", [])
+        allowed_paths = [self.get_field_path(x) for x in allowed]
         return allowed_paths
 
     def is_allowed(self, path):
@@ -362,10 +355,18 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         return False
 
     def is_matching(self, requested_path):
+        """
+        Returns True/False if the requested path starts with the current
+        'model_serializer_field_name'.
+        """
         base_path = self.get_field_path(self.model_serializer_field_name)
-        is_starting = requested_path.startswith(base_path)
-        if is_starting:
+        if requested_path == base_path:
             return True
+
+        prefix = "{}.".format(base_path)
+        if requested_path.startswith(prefix):
+            return True
+
         return False
 
     def to_default_representation(self, obj):
@@ -415,6 +416,13 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         expanded = self.expand_object(target, prefix_path)
 
         if len(suffix_field):
+            # If our prefix path is a manytomanyfield, then use the first string in the
+            # suffix path as the field name.
+            if prefix_path.endswith("_set"):
+                try:
+                    suffix_field, _ = suffix_path.split(".", 1)
+                except ValueError:
+                    suffix_field = suffix_path
             expanded[suffix_field] = self.get_expanded(target, suffix_path)
 
         return expanded
@@ -433,6 +441,41 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
 
         return self.expand(obj, prefix_field, prefix_path, suffix_field, suffix_path)
 
+    def has_comparison_field(self, d1, d2):
+        """
+        Returns True/False if both 'd1' and 'd2' have the 'comparison_field' key,
+        regardless of their respective values.
+        """
+        result = False
+        for name in self.settings.get("comparison_fields", []):
+            if result is True:
+                break
+            result = all([name in x for x in [d1, d2]])
+        return result
+
+    def compare_objects(self, d1, d2):
+        for name in self.settings.get("comparison_fields", []):
+            if all([name in x for x in [d1, d2]]):
+                return d1[name] == d2[name]
+        return False
+
+    def get_changed_field_names(self, d1, d2):
+        return DictDiffer(d1, d2).changed()
+
+    def get_target_field_names(self, paths):
+        result = []
+        for path in paths:
+            bits = path.split(".")
+            field_name = bits[-1]
+            try:
+                i = bits.index(field_name)
+                if bits[i - 2].endswith("_set"):
+                    field_name = bits[i - 1]
+            except IndexError:
+                pass
+            result.append(field_name)
+        return result
+
     def to_expanded_representation(self, obj, paths):
         """
         Entry method for converting an model object instance into a representation by
@@ -442,43 +485,40 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
             obj = obj.all()
 
         expanded = None
+        target_fields = self.get_target_field_names(paths)
 
         if len(paths) > 1:
+            # expand multiple fields
             for path in paths:
-                prefix, suffix = path.rsplit(".", 1)
-                # base_name = prefix.split(".")[0]
-
-                item = self.get_expanded(obj, path)
+                current = self.get_expanded(obj, path)
 
                 if expanded is None:
-                    expanded = item
-
+                    expanded = current
                 elif isinstance(expanded, list):
                     for d1 in expanded:
-                        if isinstance(item, list):
-                            for d2 in item:
-                                field_name = self.comparison_field_name
-                                if d2[field_name] == d1[field_name]:
-                                    diff = DictDiffer(d2, d1)
-                                    changed = diff.changed()
-                                    if suffix in changed:
-                                        d1.update({suffix: d2[suffix]})
-
-                else:
-                    diff = DictDiffer(item, expanded)
-                    changed = diff.changed()
-                    if suffix in changed:
-                        expanded.update({suffix: item[suffix]})
+                        for d2 in current:
+                            if self.has_comparison_field(d1, d2):
+                                if self.compare_objects(d1, d2):
+                                    for name in target_fields:
+                                        # merge two objects with same field names
+                                        if name in d2:
+                                            d1[name] = d2[name]
+                                        # Add the objects with different field names
+                                        # together.
+                                        else:
+                                            d1.update(d2)
         else:
-            path = paths[0]
-            # base_name = path.split(".")[0]
-            expanded = self.get_expanded(obj, path)
+            # expand single field
+            expanded = self.get_expanded(obj, paths[0])
 
         if isinstance(expanded, list):
             return HashableList(expanded)
         return HashableDict(expanded)
 
-    def get_serializer(self, source, path=None):
+    def get_serializer_context(self):
+        return self.context
+
+    def get_serializer(self, source, path=None, context=None):
         """
         Finds and returns the serializer class instance to use. Either imports the class
         specified in the entry on the 'expands' attribute of the ExpandableRelatedField
@@ -486,7 +526,11 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
         the settings previously.
         """
         serializer_class = None
-        ret = {"skipped_fields": [], "many": False, "context": self.context}
+
+        if context is None:
+            context = self.context
+
+        ret = {"skipped_fields": [], "many": False, "context": context}
 
         if isinstance(source, Manager):
             source = source.all()
