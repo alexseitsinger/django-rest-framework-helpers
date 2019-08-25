@@ -1,4 +1,11 @@
-from rest_framework.serializers import HyperlinkedModelSerializer
+from rest_framework.serializers import HyperlinkedModelSerializer, ListSerializer
+
+
+class NoEmptyListSerializer(ListSerializer):
+    def to_representation(self, data):
+        ret = super().to_representation(data)
+        res = [d for d in ret if len(d.values())]
+        return res
 
 
 class DynamicFieldsModelSerializer(HyperlinkedModelSerializer):
