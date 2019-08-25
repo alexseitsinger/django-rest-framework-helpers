@@ -20,6 +20,7 @@ from rest_framework.serializers import (
     ImageField,
     ValidationError,
     ListSerializer,
+    LIST_SERIALIZER_KWARGS,
 )
 
 from .utils import (
@@ -71,34 +72,65 @@ class RepresentationMixin(object):
 
 
 class ExplicitFieldsMixin(RepresentationMixin):
+    """
+    Remove all non-specified fields from the serializer output.
+    """
+
+    explicit_fields_query_param = "fields"
+    implicit_fields_query_param_value = "all"
+    implicit_fields_allowed = True
+
+    @property
+    def explicit_field_names_requested(self):
+        return (
+            self.context["request"]
+            .query_params.get(self.explicit_fields_query_param, "")
+            .split(",")
+        )
+
+    @property
+    def explicit_field_paths_requested(self):
+        result = []
+        for param in self.explicit_field_names_requested:
+            if param == "all":
+                result.append(param)
+            else:
+                result.append(self.get_explicit_field_path(param))
+        return result
+
+    def get_explicit_field_path(self, field_name):
+        model = self.Meta.model
+        model_name = model.__name__.lower()
+        return "{}.{}".format(model_name, field_name)
+
+    @property
+    def explicit_field_names_allowed(self):
+        return self.Meta.fields
+
+    @property
+    def explicit_field_paths_allowed(self):
+        return [
+            self.get_explicit_field_path(x) for x in self.explicit_field_names_allowed
+        ]
+
     @property
     def explicit_fields(self):
-        request = self.context["request"]
-        query_params = request.query_params
-        fields = query_params.get("fields", "").split(",")
-        fields_possible = self.Meta.fields
-        fields_chosen = []
-        for field_specified in fields:
-            if field_specified in fields_possible:
-                fields_chosen.append(field_specified)
-        return fields_chosen
+        paths_requested = self.explicit_field_paths_requested
+        paths_allowed = self.explicit_field_paths_allowed
+        return [x for x in paths_requested if x in paths_allowed]
 
-    def remove_empty_representations(self, ret):
+    def remove_non_explicit_fields(self, ret):
         res = OrderedDict()
         for k, v in ret.items():
-            if v is not None:
+            path = self.get_explicit_field_path(k)
+            if path in self.explicit_fields:
                 res[k] = v
         return res
 
     def to_representation(self, obj):
         ret = super().to_representation(obj)
-        ret = self.remove_empty_representations(ret)
+        ret = self.remove_non_explicit_fields(ret)
         return ret
-
-    def to_representation_for_field(self, field, obj):
-        field_name = field.field_name
-        if field_name in self.explicit_fields:
-            return field.to_representation(obj)
 
 
 class DebugOnlyResponseMixin(object):
