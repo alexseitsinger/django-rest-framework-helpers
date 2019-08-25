@@ -44,11 +44,13 @@ class IsRelated(BasePermission):
             return False
 
         # If the user matches the nested field, return true.
-        if user == field or user in field.all():
-            return True
-
-        # Else, return False
-        return False
+        try:
+            if user == field or user in field.all():
+                return True
+            # Else, return False
+            return False
+        except AttributeError:
+            return False
 
     def has_object_permission(self, request, view, obj):
         return self.is_related(request.user, obj)
