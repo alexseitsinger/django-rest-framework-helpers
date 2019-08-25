@@ -1,3 +1,18 @@
+<a name="v7.1.0"></a>
+## [v7.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.3...v7.1.0) (2019-08-25)
+
+### Bug Fixes
+- Fixes isRelated permission. ([8b98add](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/8b98adddee7484e43305014e9b98287e1f7588ed))
+
+### Code Refactoring
+- Updates expandable related field mixin. ([f4bd935](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/f4bd93511b30b5af86beb66ac375e36fe5197b70))
+- Updates RepresentationMixin. ([6922df7](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/6922df73568e9dbf33b451849204127630f71a42))
+
+### Features
+- Adds NoEmptyListSerializer. ([887d7bd](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/887d7bd5b88f4125406fcf77ecfd12b9f8bd7b01))
+- Adds pagination class. ([44d6210](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/44d621043eaa71f179e5b120a4c34448f5abd454))
+
+
 <a name="v7.0.3"></a>
 ## [v7.0.3](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.2...v7.0.3) (2019-08-20)
 
