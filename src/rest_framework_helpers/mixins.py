@@ -80,57 +80,51 @@ class ExplicitFieldsMixin(RepresentationMixin):
     implicit_fields_query_param_value = "all"
     implicit_fields_allowed = True
 
-    @property
-    def explicit_field_names_requested(self):
-        return (
-            self.context["request"]
-            .query_params.get(self.explicit_fields_query_param, "")
-            .split(",")
-        )
-
-    @property
-    def explicit_field_paths_requested(self):
-        result = []
-        for param in self.explicit_field_names_requested:
-            if param == "all":
-                result.append(param)
-            else:
-                result.append(self.get_explicit_field_path(param))
-        return result
-
     def get_explicit_field_path(self, field_name):
         model = self.Meta.model
         model_name = model.__name__.lower()
         return "{}.{}".format(model_name, field_name)
 
     @property
-    def explicit_field_names_allowed(self):
-        return self.Meta.fields
+    def explicit_field_paths_requested(self):
+        request = self.context["request"]
+        query_param = self.explicit_fields_query_param
+        query_params = request.query_params.get(query_param, "")
+        params = query_params.split(",")
+        return params
 
     @property
     def explicit_field_paths_allowed(self):
-        return [
-            self.get_explicit_field_path(x) for x in self.explicit_field_names_allowed
-        ]
+        results = []
+        for field_name in self.Meta.fields:
+            results.append(self.get_explicit_field_path(field_name))
+        return results
 
     @property
     def explicit_fields(self):
-        paths_requested = self.explicit_field_paths_requested
         paths_allowed = self.explicit_field_paths_allowed
-        return [x for x in paths_requested if x in paths_allowed]
+        paths_requested = self.explicit_field_paths_requested
+        all_paths = self.get_explicit_field_path("all")
+        if all_paths in paths_requested:
+            return paths_allowed
+        results = []
+        for path_requested in paths_requested:
+            if path_requested in paths_allowed:
+                results.append(path_requested)
+        return results
 
-    def remove_non_explicit_fields(self, ret):
-        res = OrderedDict()
-        for k, v in ret.items():
-            path = self.get_explicit_field_path(k)
-            if path in self.explicit_fields:
-                res[k] = v
-        return res
+    def filter_explicit_fields(self, representation):
+        filtered = OrderedDict()
+        for field_name, field_value in representation.items():
+            field_path = self.get_explicit_field_path(field_name)
+            if field_path in self.explicit_fields:
+                filtered[field_name] = field_value
+        return filtered
 
     def to_representation(self, obj):
-        ret = super().to_representation(obj)
-        ret = self.remove_non_explicit_fields(ret)
-        return ret
+        representation = super().to_representation(obj)
+        filtered = self.filter_explicit_fields(representation)
+        return filtered
 
 
 class DebugOnlyResponseMixin(object):
