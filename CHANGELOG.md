@@ -1,3 +1,10 @@
+<a name="v8.1.0"></a>
+## [v8.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.0.0...v8.1.0) (2019-09-02)
+
+### Code Refactoring
+- Adds missing implicit fields check. ([5d572f1](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/5d572f14591ad6418cde924b4759a8acd9b2bde0))
+
+
 <a name="v8.0.0"></a>
 ## [v8.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.1.0...v8.0.0) (2019-09-02)
 
