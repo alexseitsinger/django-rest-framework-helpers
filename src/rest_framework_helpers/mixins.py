@@ -104,9 +104,11 @@ class ExplicitFieldsMixin(RepresentationMixin):
     def explicit_fields(self):
         paths_allowed = self.explicit_field_paths_allowed
         paths_requested = self.explicit_field_paths_requested
-        all_paths = self.get_explicit_field_path("all")
+        implicit_param = self.implicit_fields_query_param_value
+        all_paths = self.get_explicit_field_path(implicit_param)
         if all_paths in paths_requested:
-            return paths_allowed
+            if self.implicit_fields_allowed is True:
+                return paths_allowed
         results = []
         for path_requested in paths_requested:
             if path_requested in paths_allowed:
