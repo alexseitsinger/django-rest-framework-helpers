@@ -1,3 +1,10 @@
+<a name="v8.0.0"></a>
+## [v8.0.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.1.0...v8.0.0) (2019-09-02)
+
+### Code Refactoring
+- Changes how ExplicitFields works. ([e04d6f5](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/e04d6f5f4077e6bd2ca6f50fc5d6b56e9e9dce89))
+
+
 <a name="v7.1.0"></a>
 ## [v7.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v7.0.3...v7.1.0) (2019-08-25)
 
