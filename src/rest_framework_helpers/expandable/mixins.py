@@ -2,9 +2,6 @@ from rest_framework.relations import ManyRelatedField
 from django.db.models import Manager
 from django.db.models.query import QuerySet
 from django.utils.module_loading import import_string
-import pprint
-
-pp = pprint.PrettyPrinter(indent=4)
 
 from ..utils import (
     get_object,
@@ -499,14 +496,14 @@ class ExpandableRelatedFieldMixin(ExpandableMixin):
                         for d2 in current:
                             if self.has_comparison_field(d1, d2):
                                 if self.compare_objects(d1, d2):
-                                    for name in target_fields:
-                                        # merge two objects with same field names
-                                        if name in d2:
-                                            d1[name] = d2[name]
-                                        # Add the objects with different field names
-                                        # together.
-                                        else:
-                                            d1.update(d2)
+                                    changed_fields = self.get_changed_field_names(
+                                        d1, d2
+                                    )
+                                    for field_name in changed_fields:
+                                        # The dict with the updated (from a url) will
+                                        # have a smaller length.
+                                        if len(d2[field_name]) < len(d1[field_name]):
+                                            d1[field_name] = d2[field_name]
         else:
             # expand single field
             expanded = self.get_expanded(obj, paths[0])
