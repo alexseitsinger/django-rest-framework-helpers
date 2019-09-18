@@ -6,7 +6,7 @@ from setup_utils import read, read_markdown
 PACKAGE_NAME = "django-rest-framework-helpers"
 PACKAGE_ROOT_NAME = "rest_framework_helpers"
 GITHUB_URL = "https://github.com/alexseitsinger/{}".format(PACKAGE_NAME)
-HOMEPAGE_URL = "https://www.alexseitsinger.com/packages/python/{}".format(PACKAGE_NAME)
+HOMEPAGE_URL = GITHUB_URL
 README_NAME = "README.md"
 
 setup(
