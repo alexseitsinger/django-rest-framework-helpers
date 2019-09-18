@@ -1,3 +1,10 @@
+<a name="v8.2.0"></a>
+## [v8.2.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.1.0...v8.2.0) (2019-09-18)
+
+### Bug Fixes
+- Fixes expanded multiple fields. ([15ace0b](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/15ace0bb4acc24fd2118c86915a9d23a957f66d5))
+
+
 <a name="v8.1.0"></a>
 ## [v8.1.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.0.0...v8.1.0) (2019-09-02)
 
