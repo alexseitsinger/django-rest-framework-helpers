@@ -177,20 +177,6 @@ def get_path_variations(path):
     return variations
 
 
-def remove_redundant_paths(paths):
-    results = []
-    for path in paths:
-        redundant = False
-        paths_copy = paths[:]
-        paths_copy.pop(paths.index(path))
-        for p in paths_copy:
-            if p.startswith(path) and len(p) > len(path):
-                redundant = True
-        if redundant is False:
-            results.append(path)
-    return results
-
-
 def get_class_name(obj=None):
     # Get name of parent object.
     if obj is None:
