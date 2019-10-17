@@ -29,7 +29,6 @@ from .utils import (
     get_real_field_path,
     get_class_name,
     get_model_field_path,
-    remove_redundant_paths,
     get_path_options,
     get_model_path,
     get_mapped_path,
