@@ -1,3 +1,11 @@
+<a name="v8.3.0"></a>
+## [v8.3.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.2.0...v8.3.0) (2019-10-17)
+
+### Code Refactoring
+- Moves expandable to own package. ([ed08a05](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/ed08a0528161bee149faad42456c57e139184d43))
+- Removes unused util. ([5d4354e](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/5d4354e92443191885dc47410255eafe7c24713d))
+
+
 <a name="v8.2.0"></a>
 ## [v8.2.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.1.0...v8.2.0) (2019-09-18)
 
