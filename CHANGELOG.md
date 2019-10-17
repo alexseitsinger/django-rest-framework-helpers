@@ -1,3 +1,10 @@
+<a name="v8.3.1"></a>
+## [v8.3.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.0...v8.3.1) (2019-10-17)
+
+### Bug Fixes
+- Removes import. ([e9d1c3f](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/e9d1c3f4e9a76ba0682a2392a202547b1411cf42))
+
+
 <a name="v8.3.0"></a>
 ## [v8.3.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.2.0...v8.3.0) (2019-10-17)
 
