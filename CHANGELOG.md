@@ -1,3 +1,13 @@
+<a name="v8.3.2"></a>
+## [v8.3.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.1...v8.3.2) (2019-11-28)
+
+### Bug Fixes
+- Fixes type check. ([72de760](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/72de7606af45c799967503efb5909dac0546b7db))
+
+### Code Refactoring
+- Removes unnecessary object inherit. ([6f097cd](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/6f097cd7eabe2ee129c85978d1aac6ca014dd085))
+
+
 <a name="v8.3.1"></a>
 ## [v8.3.1](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.0...v8.3.1) (2019-10-17)
 
