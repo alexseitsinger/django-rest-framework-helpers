@@ -44,7 +44,7 @@ from .utils import (
 )
 
 
-class RepresentationMixin(object):
+class RepresentationMixin:
     def to_representation(self, instance, *args, **kwargs):
         ret = OrderedDict()
         fields = self._readable_fields
@@ -85,12 +85,21 @@ class ExplicitFieldsMixin(RepresentationMixin):
         return "{}.{}".format(model_name, field_name)
 
     @property
+    def all_query_params(self):
+        """
+        When testing, the request object that is used is an HTTPRequest.
+        When using the server, rest framework wraps this with a Request object, and this
+        object has the 'query_params' attribute.
+        """
+        req = self.context["request"]
+        if hasattr(req, "query_params"):
+            return req.query_params
+        return req.GET
+
+    @property
     def explicit_field_paths_requested(self):
-        request = self.context["request"]
-        query_param = self.explicit_fields_query_param
-        query_params = request.query_params.get(query_param, "")
-        params = query_params.split(",")
-        return params
+        target_param = self.explicit_fields_query_param
+        return self.all_query_params.get(target_param, "").split(",")
 
     @property
     def explicit_field_paths_allowed(self):
@@ -131,7 +140,7 @@ class ExplicitFieldsMixin(RepresentationMixin):
         return filtered
 
 
-class DebugOnlyResponseMixin(object):
+class DebugOnlyResponseMixin:
     """
     Returns the response if in DEBUG mode, otherwise raises a 404.
     """
@@ -142,7 +151,7 @@ class DebugOnlyResponseMixin(object):
         return super().get(request, format)
 
 
-class EndpointsAllowedMixin(object):
+class EndpointsAllowedMixin:
     """
     Only returns endpoints that are allowed.
     """
@@ -158,7 +167,7 @@ class EndpointsAllowedMixin(object):
         return endpoints
 
 
-class EndpointsRemovedMixin(object):
+class EndpointsRemovedMixin:
     """
     Removes the named endpoints from the response.
     """
@@ -174,7 +183,7 @@ class EndpointsRemovedMixin(object):
         return endpoints
 
 
-class SkippedFieldsMixin(object):
+class SkippedFieldsMixin:
     """
     Dynamically removes fields from serializer.
     https://stackoverflow.com/questions/27935558/dynamically-exclude-or-include-a-field-in-django-rest-framework-serializer
@@ -192,7 +201,7 @@ class SkippedFieldsMixin(object):
                     self.fields.pop(field_name)
 
 
-class GetOrCreateMixin(object):
+class GetOrCreateMixin:
     """
     Allows a get or create of an object.
     https://stackoverflow.com/questions/25026034/django-rest-framework-modelserializer-get-or-create-functionality
@@ -219,7 +228,7 @@ class GetOrCreateMixin(object):
             return super().is_valid(raise_exception)
 
 
-class OrderByFieldNameMixin(object):
+class OrderByFieldNameMixin:
     """
     Returns querysets ordered by the field name specified.
     """
@@ -233,7 +242,7 @@ class OrderByFieldNameMixin(object):
         return queryset
 
 
-class ExcludeKwargsMixin(object):
+class ExcludeKwargsMixin:
     """
     Returns querysets that exclude specified kwargs.
     """
@@ -246,7 +255,7 @@ class ExcludeKwargsMixin(object):
         return queryset
 
 
-class CheckQuerysetObjectPermissionsMixin(object):
+class CheckQuerysetObjectPermissionsMixin:
     """
     Check object permissions for each object in queryset.
     NOTE: Requires that the permission classes include an object permission check.
@@ -259,7 +268,7 @@ class CheckQuerysetObjectPermissionsMixin(object):
         return queryset
 
 
-class ValidateCurrentUserMixin(object):
+class ValidateCurrentUserMixin:
     """
     Adds a current_user property to the object.
     """
@@ -334,7 +343,7 @@ class ValidateUserFieldMixin(ValidateCurrentUserMixin):
         return value
 
 
-class SerializerClassByActionMixin(object):
+class SerializerClassByActionMixin:
     """
     Return the serializer class based on the action verb.
     """
@@ -346,7 +355,7 @@ class SerializerClassByActionMixin(object):
         return attr.get(self.action, super().get_serializer_class())
 
 
-class PermissionClassesByActionMixin(object):
+class PermissionClassesByActionMixin:
     """
     Returns a list of permission classes to use based on the action verb.
     https://stackoverflow.com/questions/36001485/django-rest-framework-different-permission-per-methods-within-same-view
@@ -358,13 +367,13 @@ class PermissionClassesByActionMixin(object):
         attr = self.permission_classes_by_action
         for_all = attr.get("all", [])
         for_action = attr.get(self.action, attr.get("default", []))
-        permission_classes = for_all + for_action
-        if len(permission_classes):
-            return [permission_class() for permission_class in permission_classes]
+        permission_classes = list(set(for_all + for_action))
+        if permission_classes:
+            return [p() for p in permission_classes]
         return super().get_permissions()
 
 
-class MultipleFieldLookupMixin(object):
+class MultipleFieldLookupMixin:
     """
     Apply this mixin to any view or viewset to get multiple field filtering based on a
     `lookup_fields` attribute, instead of the default single field filtering.
@@ -380,7 +389,7 @@ class MultipleFieldLookupMixin(object):
         return get_object_or_404(queryset, **filter)  # Lookup the object
 
 
-class HyperlinkListMixin(object):
+class HyperlinkListMixin:
     """
     List URL attribute from each object.
     """
@@ -399,7 +408,7 @@ class HyperlinkListMixin(object):
         return Response(result)
 
 
-class ParameterisedViewMixin(object):
+class ParameterisedViewMixin:
     """
     Used in conjunction with the ParameterisedFieldMixin to enable multiple custom
     lookup_fields for queries.
@@ -435,7 +444,7 @@ class ParameterisedViewMixin(object):
         return obj
 
 
-class ParameterisedFieldMixin(object):
+class ParameterisedFieldMixin:
     """
     Used in conjunction with the ParameterisedViewMixin to enable multiple custom
     lookup_fields for serializing.
@@ -495,7 +504,7 @@ class ParameterisedFieldMixin(object):
         )
 
 
-class MeAliasMixin(object):
+class MeAliasMixin:
     def initial(self, request, *args, **kwargs):
         """
         This is the 'dispatch' method for rest_framework.  This has <request.data> etc.
