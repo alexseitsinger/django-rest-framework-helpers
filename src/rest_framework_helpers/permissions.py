@@ -32,9 +32,10 @@ class IsRelated(BasePermission):
         return field
 
     def is_related(self, user, obj):
-        # If it's a user object instance, compare it directly.
-        if user == obj:
-            return True
+        if isinstance(obj, type(user)):
+            if user == obj:
+                return True
+            return False
 
         # Compare the field, otherwise.
         field = self.get_field(obj)
