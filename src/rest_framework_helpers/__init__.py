@@ -1,4 +1,4 @@
 # Do not change this version manually.
 # Versioning is managed by package_controller.
 # To update the version run `pc version --patch | --minor | --major`
-__version__ = "8.3.2"
+__version__ = "8.4.0"
