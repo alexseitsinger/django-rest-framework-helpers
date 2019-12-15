@@ -1,3 +1,10 @@
+<a name="v8.5.0"></a>
+## [v8.5.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.4.0...v8.5.0) (2019-12-15)
+
+### Features
+- Adds default case for conditions. ([855f493](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/855f493dc04204ccd3ba4ca3f60b3958ca9bed62))
+
+
 <a name="v8.4.0"></a>
 ## [v8.4.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.2...v8.4.0) (2019-12-15)
 
