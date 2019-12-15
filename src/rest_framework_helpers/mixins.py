@@ -93,6 +93,15 @@ class ConditionalFieldsMixin(RepresentationMixin):
                 ]
                 if any([x is False for x in results]):
                     continue
+            elif "default" in self.conditional_fields:
+                condition_classes = self.conditional_fields["default"]
+                conditions = [c() for c in condition_classes]
+                results = [
+                    c.has_object_condition(k, v, obj, representation, request)
+                    for c in conditions
+                ]
+                if any([x is False for x in results]):
+                    continue
             new_rep[k] = v
         return new_rep
 
