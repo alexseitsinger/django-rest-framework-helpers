@@ -12,8 +12,10 @@ class IsRelated(BasePermission):
     target_field = None
 
     def get_field(self, obj):
+        # If we'renot given a target field, assume that this is evaulating the actual
+        # User object itself.
         if self.target_field is None:
-            raise AttributeError("There is no target field specified.")
+            return self
 
         # Split the target field name into parts.
         bits = self.target_field.split(".")
@@ -31,9 +33,21 @@ class IsRelated(BasePermission):
         # Return the field to use.
         return field
 
-    def is_related(self, user, obj):
-        if isinstance(obj, type(user)):
-            if user == obj:
+    def get_actual_object(self, obj):
+        if hasattr(obj, "_wrapped") and hasattr(obj, "_setup"):
+            if obj._wrapped.__class__ == object:
+                obj._setup()
+            return obj._wrapped
+        return obj
+
+    def is_related(self, current_user, obj):
+        # If we're passed the user object, we're given a lazy object, which sint the
+        # User type. So, to check the actual type we need to reach in and get the real
+        # object.
+        actual_current_user = self.get_actual_object(current_user)
+        actual_obj = self.get_actual_object(obj)
+        if isinstance(actual_obj, type(actual_current_user)):
+            if actual_current_user == actual_obj:
                 return True
             return False
 
@@ -46,7 +60,7 @@ class IsRelated(BasePermission):
 
         # If the user matches the nested field, return true.
         try:
-            if user == field or user in field.all():
+            if current_user == field or current_user in field.all():
                 return True
             # Else, return False
             return False

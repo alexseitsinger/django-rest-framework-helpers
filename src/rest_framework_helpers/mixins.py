@@ -70,6 +70,38 @@ class RepresentationMixin:
         return field.to_representation(obj, *args, **kwargs)
 
 
+class ConditionalFieldsMixin(RepresentationMixin):
+    """
+    Returns serializer fields if conditions pass.
+    """
+
+    conditional_fields = None
+
+    def filter_conditional_fields(self, representation, obj):
+        if self.conditional_fields is None:
+            return representation
+
+        new_rep = OrderedDict()
+        request = self.context["request"]
+        for k, v in representation.items():
+            if k in self.conditional_fields:
+                condition_classes = self.conditional_fields[k]
+                conditions = [c() for c in condition_classes]
+                results = [
+                    c.has_object_condition(k, v, obj, representation, request)
+                    for c in conditions
+                ]
+                if any([x is False for x in results]):
+                    continue
+            new_rep[k] = v
+        return new_rep
+
+    def to_representation(self, obj):
+        representation = super().to_representation(obj)
+        filtered = self.filter_conditional_fields(representation, obj)
+        return filtered
+
+
 class ExplicitFieldsMixin(RepresentationMixin):
     """
     Remove all non-specified fields from the serializer output.
