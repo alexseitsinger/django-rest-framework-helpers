@@ -1,3 +1,10 @@
+<a name="v8.4.0"></a>
+## [v8.4.0](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.2...v8.4.0) (2019-12-15)
+
+### Features
+- Adds mixin class. ([3115aad](https://github.com/alexseitsinger/django-rest-framework-helpers/commit/3115aad30504eb28b35c00d80416ed6b680e9eb7))
+
+
 <a name="v8.3.2"></a>
 ## [v8.3.2](https://github.com/alexseitsinger/django-rest-framework-helpers/compare/v8.3.1...v8.3.2) (2019-11-28)
 
